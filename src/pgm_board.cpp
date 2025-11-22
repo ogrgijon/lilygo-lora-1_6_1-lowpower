@@ -43,12 +43,11 @@
 void enterDeepSleep();
 
 // ==================== CONFIGURACIÓN LoRaWAN ====================
-// Claves de activación OTAA - ¡ACTUALIZAR CON TUS VALORES DE TTN!
-// Formato: LSB para APPEUI/DEVEUI, MSB para APPKEY
-// Obtén estos valores de la consola de TTN en tu aplicación
-static const u1_t PROGMEM APPEUI[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; // LSB
-static const u1_t PROGMEM DEVEUI[8] = {0x2B, 0x43, 0x07, 0xD0, 0x7E, 0xD5, 0xB3, 0x70}; // LSB
-static const u1_t PROGMEM APPKEY[16] = {0x36, 0xA5, 0x8D, 0x12, 0x03, 0x93, 0xE7, 0xAF, 0xDC, 0xE8, 0x6E, 0x27, 0xF2, 0x91, 0x7F, 0x4B}; // MSB
+// Las claves de activación OTAA ahora están en lorawan_config.h
+// ¡IMPORTANTE! Actualiza lorawan_config.h con tus valores de TTN
+// Copia lorawan_config_template.h a lorawan_config.h si no existe
+
+#include "lorawan_config.h"     // Claves LoRaWAN (archivo separado para seguridad)
 
 // ==================== MAPEO DE PINES LMIC ====================
 // Configuración de pines para diferentes plataformas
