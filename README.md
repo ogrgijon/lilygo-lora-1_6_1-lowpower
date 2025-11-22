@@ -1,11 +1,25 @@
 # 🌡️ Sistema IoT LoRaWAN Modular - Sensor Ambiental Inteligente
+---
+> ### 🎓 Proyecto Académico - Sin Ánimo de Lucro
+> Este proyecto ha sido desarrollado para apoyar a los investigadores y prototipos del Medialab de la Universidad de Oviedo.  
+> Todo el código, documentación y diseños están disponibles gratuitamente para fines educativos y de investigación.
 
-> **🎓 Proyecto Académico - Sin Ánimo de Lucro**  
-> Este proyecto ha sido desarrollado para apoyar a los investigadores y prototipos del Medialab de la Universidad de Oviedo. Todo el código, documentación y diseños están disponibles gratuitamente para fines educativos y de investigación.
+---
 
-> **¿Nuevo en IoT y LoRaWAN?**  
-> Consulta la guía de introducción: [docs/inicio.md](docs/inicio.md) para aprender desde cero sobre la tecnología, conceptos básicos y primeros pasos.
+> ### 🆕 ¿Nuevo en IoT y LoRaWAN?
+> Consulta la guía de introducción:  
+> [docs/inicio.md](docs/inicio.md)  
+> Aprende desde cero sobre la tecnología, conceptos básicos y primeros pasos.
 
+---
+
+> ### ⚠️ Responsabilidad y Normativa
+> Antes de desplegar el sistema, consulta el documento:  
+> [docs/responsabilidad.md](docs/responsabilidad.md)  
+> Uso responsable y ético.  
+> **Importante:** Infórmate sobre la normativa vigente del espectro radioeléctrico en tu país para operar dispositivos LoRaWAN legalmente.
+
+---
 
 [![PlatformIO](https://img.shields.io/badge/PlatformIO-6.1.11-blue.svg)](https://platformio.org)
 [![ESP32](https://img.shields.io/badge/ESP32-240MHz-green.svg)](https://www.espressif.com/en/products/socs/esp32)
