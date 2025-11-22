@@ -31,8 +31,8 @@
 ## 🎯 Características Principales
 
 ### 🌡️ **Sensores Ambientales Avanzados**
-- **BME280**: Temperatura (-40°C a +85°C), humedad (0-100%), presión (300-1100 hPa)
-- **Precisión**: 0.01 unidades para todas las lecturas
+- **DHT22**: Temperatura (-40°C a +80°C), humedad (0-100%)
+- **Precisión**: 0.01 unidades para temperatura y humedad
 - **Recuperación automática**: Sistema continúa funcionando aunque falle el sensor
 
 ### 📡 **Comunicación LoRaWAN Robusta**
@@ -87,19 +87,17 @@ Para operación continua, una placa solar debe suministrar al menos el consumo d
 
 ## 📊 Datos Transmitidos
 
-### 📦 **Payload de 8 Bytes (Big-Endian)**
+### 📦 **Payload de 6 Bytes (Big-Endian)**
 
 | Campo | Bytes | Tipo | Rango | Precisión | Ejemplo |
 |-------|-------|------|-------|-----------|---------|
-| **Temperatura** | 0-1 | int16_t | -40°C a 85°C | 0.01°C | `25.67°C` |
+| **Temperatura** | 0-1 | int16_t | -40°C a 80°C | 0.01°C | `25.67°C` |
 | **Humedad** | 2-3 | uint16_t | 0-100% | 0.01% | `65.43%` |
-| **Presión** | 4-5 | uint16_t | 300-1100 hPa | 0.01 hPa | `1013.25 hPa` |
-| **Batería** | 6-7 | uint16_t | 0-5V | 0.01V | `3.85V` |
+| **Batería** | 4-5 | uint16_t | 0-5V | 0.01V | `3.85V` |
 
 ### 🔍 **Códigos de Error**
 - **Temperatura**: `-999.0°C` (sensor fallando)
 - **Humedad**: `-1.0%` (sensor fallando)
-- **Presión**: `-1.0 hPa` (sensor fallando)
 - **Batería**: Siempre disponible
 
 ## 🚀 Inicio Rápido
@@ -148,7 +146,7 @@ low-power-project/
 ├── 📁 src/
 │   ├── main.cpp               # 🚀 Entry point Arduino (renombrado)
 │   ├── pgm_board.cpp          # 📡 Núcleo LoRaWAN
-│   ├── sensor.cpp             # 🌡️ Gestión sensores BME280
+│   ├── sensor.cpp             # 🌡️ Gestión de sensores DHT22
 │   ├── screen.cpp             # 🖥️ Sistema display OLED
 │   ├── LoRaBoards.cpp         # 🔧 Abstracción hardware LilyGo
 │   ├── LoRaBoards.h           # 🔧 Headers hardware
@@ -162,7 +160,8 @@ low-power-project/
 │   ├── lorawan_config_template.h # 📋 Plantilla de configuración segura
 │   └── utilities.h            # 📋 Utilidades comunes
 ├── 📁 lib/
-│   ├── Adafruit_BME280_Library/  # 🌡️ Librería sensor BME280
+│   ├── Adafruit_BME280_Library/  # 🌡️ Librería sensor BME280 (legacy)
+│   ├── DHT_sensor_library/      # 🌡️ Librería sensor DHT22
 │   ├── Adafruit_BusIO/        # 🔧 Bus I2C/SPI Adafruit
 │   ├── Adafruit_Sensor/       # 📊 Framework sensores Adafruit
 │   ├── LMIC-Arduino/          # 📡 Stack LoRaWAN
@@ -193,19 +192,19 @@ low-power-project/
 #define SINGLE_CHANNEL_GATEWAY 0       // Multi-canal producción
 ```
 
-### 🌡️ **Configuración Sensor BME280**
+### 🌡️ **Configuración Sensor DHT22**
 ```cpp
-// Modos de operación
-#define BME280_MODE_FORCED              // Bajo consumo
+// Pin de datos del sensor
+#define DHT_PIN 13                    // GPIO para señal DHT22
 
-// Sobremuestreo para precisión
-#define BME280_TEMPERATURE_OSR BME280_OSR_X2
-#define BME280_HUMIDITY_OSR BME280_OSR_X1
-#define BME280_PRESSURE_OSR BME280_OSR_X1
+// Tipo de sensor DHT
+#define DHT_TYPE DHT22                // DHT22, DHT11, DHT21
 
-// Dirección I2C
-bool sensorOk = bme.begin(0x76);        // Default
-if (!sensorOk) sensorOk = bme.begin(0x77); // Fallback
+// Control de alimentación
+#define DHT_POWER_PIN 12              // GPIO para controlar alimentación
+#define DHT_POWER_ON_DELAY_MS 2000    // Tiempo de estabilización (ms)
+
+// Dirección I2C (no aplica para DHT22 - comunicación digital)
 ```
 
 ### 🔋 **Gestión de Energía**
@@ -247,15 +246,14 @@ function decodeUplink(input) {
     data: {
       temperature: ((bytes[0] << 8) | bytes[1]) / 100.0,
       humidity: ((bytes[2] << 8) | bytes[3]) / 100.0,
-      pressure: ((bytes[4] << 8) | bytes[5]) / 100.0,
-      battery_voltage: ((bytes[6] << 8) | bytes[7]) / 100.0
+      battery_voltage: ((bytes[4] << 8) | bytes[5]) / 100.0
     }
   };
 }
 ```
 
 ### 📈 **Dashboard TTN**
-- Temperatura, humedad, presión en gráficos
+- Temperatura y humedad en gráficos
 - Voltaje de batería con alertas
 - RSSI/SNR para calidad de enlace
 - Historial de transmisiones

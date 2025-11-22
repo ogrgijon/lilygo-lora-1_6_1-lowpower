@@ -6,18 +6,18 @@ Este proyecto utiliza varias librerías de código abierto y de terceros para im
 
 ## Librerías Principales
 
-### 1. Adafruit BME280 Library
+### 1. DHT Sensor Library
 - **Propietario**: Adafruit Industries LLC
-- **Licencia**: BSD 3-Clause License
-- **Versión utilizada**: 2.3.0
-- **Propósito**: Control del sensor BME280 para medición de temperatura, humedad y presión atmosférica
-- **Repositorio**: https://github.com/adafruit/Adafruit_BME280_Library
+- **Licencia**: MIT License
+- **Versión utilizada**: 1.4.4
+- **Propósito**: Control de sensores DHT (DHT11, DHT22, DHT21) para medición de temperatura y humedad
+- **Repositorio**: https://github.com/adafruit/DHT-sensor-library
 - **Derechos y restricciones**:
   - ✅ Uso comercial permitido
   - ✅ Modificación del código permitida
   - ✅ Distribución permitida (con inclusión del aviso de copyright)
-  - ❌ No se puede usar el nombre "Adafruit Industries" para promocionar productos derivados sin permiso escrito
-- **Dependencias**: Adafruit Unified Sensor Driver
+  - ✅ Uso privado y comercial sin restricciones
+- **Dependencias**: Adafruit Unified Sensor Driver (opcional)
 
 ### 2. U8g2 Library
 - **Propietario**: Oliver Kraus
@@ -110,8 +110,8 @@ Este proyecto utiliza varias librerías de código abierto y de terceros para im
 
 | Licencia | Librerías | Permisos | Restricciones |
 |----------|-----------|----------|---------------|
-| **MIT** | XPowersLib, LMIC-Arduino | Uso comercial, modificación, distribución | Incluir copyright |
-| **BSD 3-Clause** | Adafruit BME280 | Uso comercial, modificación, distribución | No usar nombre del propietario para promoción |
+| **MIT** | XPowersLib, LMIC-Arduino, DHT Sensor Library | Uso comercial, modificación, distribución | Incluir copyright |
+| **BSD 3-Clause** | Adafruit BME280 (legacy) | Uso comercial, modificación, distribución | No usar nombre del propietario para promoción |
 | **BSD 2-Clause** | U8g2 | Uso comercial, modificación, distribución | Incluir copyright |
 | **LGPL 2.1** | Wire, SPI, FS, SD, WiFi | Uso comercial, modificación, distribución | Cambios deben ser LGPL |
 | **Apache 2.0** | ESP32 BLE Arduino | Uso comercial, modificación, distribución | Incluir copyright, patentes |

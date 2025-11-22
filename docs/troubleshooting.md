@@ -100,55 +100,66 @@ EV_JOIN_FAILED (repetitivo)
 
 ---
 
-### 🌡️ **3. Sensor BME280 No Responde**
+### 🌡️ **3. Sensor DHT22 No Responde**
 
 #### **Síntomas**
 ```
-Sensor BME280 no encontrado
+Sensor DHT22 no encontrado
 Temperatura: -999.0°C
 Humedad: -1.0%
-Presión: -1.0 hPa
 ```
 
 #### **Diagnóstico Paso a Paso**
 1. **Conexión física**
    ```
-   ESP32 ←→ BME280
+   ESP32 ←→ DHT22
    3.3V ←→ VCC
    GND  ←→ GND
-   SDA  ←→ SDA (GPIO 17)
-   SCL  ←→ SCL (GPIO 18)
+   GPIO 13 ←→ DATA (señal digital)
+   GPIO 12 ←→ POWER (control alimentación)
    ```
 
-2. **Dirección I2C**
+2. **Configuración de pines**
    ```cpp
-   // Probar ambas direcciones
-   bool sensorOk = bme.begin(0x76); // Default
-   if (!sensorOk) {
-       sensorOk = bme.begin(0x77); // Alternativa
-   }
+   // Verificar configuración en sensor_config.h
+   #define DHT_PIN 13                    // Pin de datos
+   #define DHT_TYPE DHT22                // Tipo de sensor
+   #define DHT_POWER_PIN 12              // Pin de alimentación
+   #define DHT_POWER_ON_DELAY_MS 2000    // Tiempo de estabilización
    ```
 
-3. **Scanner I2C**
+3. **Test de comunicación**
    ```cpp
-   // Agregar función de diagnóstico
-   void scanI2C() {
-       Wire.begin();
-       Serial.println("Escaneando I2C...");
-       for (byte addr = 1; addr < 127; addr++) {
-           Wire.beginTransmission(addr);
-           if (Wire.endTransmission() == 0) {
-               Serial.printf("Dispositivo encontrado: 0x%02X\n", addr);
-           }
+   // Función de diagnóstico para DHT22
+   void testDHT22() {
+       // Encender sensor
+       pinMode(DHT_POWER_PIN, OUTPUT);
+       digitalWrite(DHT_POWER_PIN, HIGH);
+       delay(DHT_POWER_ON_DELAY_MS);
+
+       // Intentar lectura
+       DHT dht(DHT_PIN, DHT_TYPE);
+       dht.begin();
+
+       float temp = dht.readTemperature();
+       float hum = dht.readHumidity();
+
+       if (isnan(temp) || isnan(hum)) {
+           Serial.println("DHT22: Error de comunicación");
+       } else {
+           Serial.printf("DHT22: OK - Temp: %.1f°C, Hum: %.1f%%\n", temp, hum);
        }
+
+       // Apagar sensor
+       digitalWrite(DHT_POWER_PIN, LOW);
    }
    ```
 
 #### **Soluciones**
-- **Conexión**: Verificar soldadura y pines correctos
-- **Alimentación**: 3.3V estable (no 5V)
-- **Dirección**: Cambiar entre 0x76 y 0x77
-- **Conflicto I2C**: Desconectar OLED temporalmente
+- **Conexión**: Verificar cableado digital (no I2C)
+- **Alimentación**: 3.3V estable con control de power
+- **Tiempo**: Esperar 2 segundos después de encender
+- **Tipo**: Confirmar DHT22 (no DHT11)
 
 ---
 
@@ -269,22 +280,21 @@ ACK recibido de gateway
 #### **Diagnóstico Paso a Paso**
 1. **Payload format**
    ```cpp
-   // Verificar formato 8 bytes
-   uint8_t payload[8];
+   // Verificar formato 6 bytes
+   uint8_t payload[6];
    uint8_t size = getSensorPayload(payload, sizeof(payload));
    Serial.printf("Payload size: %d bytes\n", size);
    ```
 
 2. **Decoder TTN**
    ```javascript
-   // Decoder actualizado para 8 bytes
+   // Decoder actualizado para 6 bytes
    function decodeUplink(input) {
      var bytes = input.bytes;
      return {
        temperature: ((bytes[0] << 8) | bytes[1]) / 100.0,
        humidity: ((bytes[2] << 8) | bytes[3]) / 100.0,
-       pressure: ((bytes[4] << 8) | bytes[5]) / 100.0,
-       battery: ((bytes[6] << 8) | bytes[7]) / 100.0
+       battery: ((bytes[4] << 8) | bytes[5]) / 100.0
      };
    }
    ```
@@ -298,7 +308,7 @@ ACK recibido de gateway
    ```
 
 #### **Soluciones**
-- **Decoder**: Actualizar para 8 bytes (temperatura, humedad, presión, batería)
+- **Decoder**: Actualizar para 6 bytes (temperatura, humedad, batería)
 - **Escala**: Verificar división por 100
 - **TTN Console**: Confirmar dispositivo registrado y activo
 - **Gateway**: Verificar recepción de uplinks

@@ -37,15 +37,15 @@
 - **Características**: AES-128 encryption, duty cycle compliance
 - **Configuración**: `platformio.ini` → `lib_deps = IBM LMIC framework`
 
-#### **2. Sensor Ambiental - Adafruit BME280**
+#### **2. Sensor Ambiental - DHT Sensor Library**
 ```cpp
-// Versión: 2.2.2
-// Propósito: Temperatura, humedad, presión atmosférica
-// Precisión: ±0.5°C, ±2% RH, ±1 hPa
-#include <Adafruit_BME280.h>
+// Versión: 1.4.4
+// Propósito: Temperatura y humedad ambiental
+// Precisión: ±0.5°C, ±2-5% RH (depende del modelo)
+#include <DHT.h>
 ```
 - **Uso**: Lecturas ambientales cada ciclo de transmisión
-- **Modo**: Forced mode para bajo consumo
+- **Control de energía**: Alimentación controlada para bajo consumo
 - **Recuperación**: Reintento automático en caso de fallo
 
 #### **3. Display OLED - U8g2**
@@ -88,7 +88,7 @@ board_build.flash_mode = qio
 ; Librerías dependientes
 lib_deps =
     IBM LMIC framework @ ^4.1.1
-    adafruit/Adafruit BME280 Library @ ^2.2.2
+    adafruit/DHT sensor library @ ^1.4.4
     olikraus/U8g2 @ ^2.34.4
     lewisxhe/XPowersLib @ ^0.1.8
 
@@ -147,10 +147,10 @@ include/
 #### **Módulo Sensor (`sensor.cpp`)**
 ```cpp
 // Responsabilidades
-- Inicialización BME280 con recuperación
-- Lectura temperatura/humedad/presión
+- Inicialización DHT22 con control de alimentación
+- Lectura temperatura/humedad
 - Validación y códigos de error
-- Formateo payload binario 8 bytes
+- Formateo payload binario 6 bytes
 - Monitoreo batería
 ```
 
@@ -216,31 +216,29 @@ static const u1_t PROGMEM APPKEY[16] = {0xXX, 0xXX, 0xXX, 0xXX, 0xXX, 0xXX, 0xXX
 
 ### 🌡️ **Configuración Sensor**
 
-#### **BME280 - Parámetros de Calidad**
+#### **DHT22 - Parámetros de Operación**
 ```cpp
-// Modo de operación
-#define BME280_MODE_FORCED              // Bajo consumo
+// Configuración de pines
+#define DHT_PIN 13                    // GPIO para señal digital
+#define DHT_TYPE DHT22                 // Tipo de sensor DHT
+#define DHT_POWER_PIN 12              // GPIO para control de alimentación
 
-// Sobremuestreo (precisión vs consumo)
-#define BME280_TEMPERATURE_OSR BME280_OSR_X2
-#define BME280_HUMIDITY_OSR BME280_OSR_X1
-#define BME280_PRESSURE_OSR BME280_OSR_X1
+// Parámetros de timing
+#define DHT_POWER_ON_DELAY_MS 2000    // Tiempo de estabilización (ms)
 
-// Filtro IIR (estabilidad)
-#define BME280_FILTER_COEFF BME280_FILTER_COEFF_16
-
-// Tiempo standby (no usado en FORCED)
-#define BME280_STANDBY_TIME BME280_STANDBY_MS_1000
+// Rango de operación
+#define DHT_TEMPERATURE_MIN -40.0f    // °C - rango mínimo
+#define DHT_TEMPERATURE_MAX 80.0f     // °C - rango máximo
+#define DHT_HUMIDITY_MIN 0.0f         // % - humedad mínima
+#define DHT_HUMIDITY_MAX 100.0f       // % - humedad máxima
 ```
 
-#### **Dirección I2C**
+#### **Protocolo de Comunicación**
 ```cpp
-// Intentar dirección por defecto
-bool sensorOk = bme.begin(0x76);
-if (!sensorOk) {
-    // Fallback a dirección alternativa
-    sensorOk = bme.begin(0x77);
-}
+// El DHT22 usa comunicación digital unidireccional
+// No requiere configuración I2C/SPI
+// Señal digital en pin especificado
+// Alimentación controlada para bajo consumo
 ```
 
 ### 🖥️ **Configuración Display**
@@ -331,7 +329,7 @@ Flash: [===       ]  25.5% (used 267313 bytes from 1048576 bytes)
 
 #### **Configuración TTN**
 ```javascript
-// Decoder para 8 bytes payload
+// Decoder para 6 bytes payload (DHT22: temperatura, humedad, batería)
 function decodeUplink(input) {
   var bytes = input.bytes;
   var data = {};
@@ -344,11 +342,8 @@ function decodeUplink(input) {
   // Humedad (big-endian, unsigned)
   data.humidity = ((bytes[2] << 8) | bytes[3]) / 100.0;
 
-  // Presión (big-endian, unsigned)
-  data.pressure = ((bytes[4] << 8) | bytes[5]) / 100.0;
-
   // Batería (big-endian, unsigned)
-  data.battery_voltage = ((bytes[6] << 8) | bytes[7]) / 100.0;
+  data.battery_voltage = ((bytes[4] << 8) | bytes[5]) / 100.0;
 
   return { data: data };
 }
@@ -368,7 +363,6 @@ void testSensorReadings() {
     assert(result == true);
     assert(temp > -50.0f && temp < 100.0f);
     assert(hum >= 0.0f && hum <= 100.0f);
-    assert(pres > 800.0f && pres < 1200.0f);
     assert(batt > 2.5f && batt < 4.5f);
 }
 ```

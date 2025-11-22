@@ -387,18 +387,22 @@ sequenceDiagram
 ### 🌡️ **Recuperación de Sensor**
 ```cpp
 bool initSensor() {
-    if (!bme.begin(0x76)) {
-        Serial.println("Sensor BME280 no encontrado");
-        sensorAvailable = false;
-        return false;
-    }
+    // Configurar control de alimentación
+    pinMode(DHT_POWER_PIN, OUTPUT);
+    digitalWrite(DHT_POWER_PIN, LOW); // Empezar apagado
+
+    // Inicializar objeto DHT
+    DHT dht(DHT_PIN, DHT_TYPE);
+    dht.begin();
+
+    Serial.println("Sensor DHT22 inicializado");
     sensorAvailable = true;
     return true;
 }
 
 bool retrySensorInit() {
     if (sensorAvailable) return true;
-    Serial.println("Reintentando inicialización...");
+    Serial.println("Reintentando inicialización DHT22...");
     return initSensor();
 }
 ```
@@ -429,7 +433,7 @@ bool retrySensorInit() {
 | Componente | Flash | RAM | Notas |
 |------------|-------|-----|-------|
 | **LoRaWAN** | 180KB | 8KB | LMIC library |
-| **Sensor** | 15KB | 2KB | BME280 + variables |
+| **Sensor** | 15KB | 2KB | DHT22 + variables |
 | **Display** | 25KB | 4KB | U8g2 + cola mensajes |
 | **Hardware** | 35KB | 3KB | Configuración pines |
 | **Total** | 255KB | 17KB | ~20% del total |
@@ -437,7 +441,7 @@ bool retrySensorInit() {
 ### ⚡ **Rendimiento**
 | Operación | Tiempo | Consumo |
 |-----------|--------|---------|
-| **Lectura BME280** | 10ms | 15mA |
+| **Lectura DHT22** | 10ms | 15mA |
 | **Transmisión LoRa** | 1-2s | 120mA |
 | **Deep Sleep** | 60s | 20μA |
 | **Display Update** | 50ms | 25mA |
@@ -483,7 +487,6 @@ if (!sensorOk) {
     // Enviar códigos de error reconocibles
     temp = -999.0f;  // Código de error temperatura
     hum = -1.0f;     // Código de error humedad
-    pres = -1.0f;    // Código de error presión
     // Batería siempre disponible
 }
 ```

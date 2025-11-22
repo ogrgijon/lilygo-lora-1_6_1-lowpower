@@ -7,7 +7,7 @@ Sistema IoT avanzado que mide parámetros ambientales (temperatura, humedad, pre
 
 ### ✨ Características Principales
 
-- **📊 Sensores Ambientales**: BME280 (temperatura, humedad, presión barométrica)
+- **📊 Sensores Ambientales**: DHT22 (temperatura, humedad)
 - **🔋 Gestión de Energía**: PMU AXP2101 con medición de batería y deep sleep
 - **📡 Comunicación LoRaWAN**: OTAA con frecuencia 868MHz (Europa)
 - **🖥️ Interfaz OLED**: Sistema de mensajes inteligente con temporización
@@ -35,19 +35,18 @@ graph TD
 2. **Join**: "Uniéndose OTAA...." (persistente)
 3. **Conectado**: "Unido a TTN!" (3s) → pantalla off
 4. **Transmisión**:
-   - ✅ **Con sensor**: "T:23.5C H:65.2% P:1013.2hPa B:3.85V"
+   - ✅ **Con sensor**: "T:23.5C H:65.2% B:3.85V"
    - ⚠️ **Sin sensor**: "Solo bateria" + datos de batería
 5. **Confirmación**: "Datos enviados!" (2s)
 6. **Reposo**: Pantalla apagada para ahorro de energía
 
-## 📊 Formato del Payload LoRaWAN (8 bytes)
+## 📊 Formato del Payload LoRaWAN (6 bytes)
 
 | Bytes | Campo | Tipo | Rango | Escala | Unidad | Descripción |
 |-------|-------|------|-------|--------|--------|-------------|
 | 0-1 | Temperatura | int16 | -327.68 a 327.67 | ×100 | °C | Temperatura ambiente |
 | 2-3 | Humedad | uint16 | 0.00 a 655.35 | ×100 | % | Humedad relativa |
-| 4-5 | Presión | uint16 | 0.00 a 655.35 | ×100 | hPa | Presión barométrica |
-| 6-7 | Batería | uint16 | 0.00 a 6.55 | ×100 | V | Voltaje de batería LiPo |
+| 4-5 | Batería | uint16 | 0.00 a 6.55 | ×100 | V | Voltaje de batería LiPo |
 
 ### 🔧 Decodificador TTN (JavaScript)
 
@@ -64,11 +63,8 @@ function decodeUplink(input) {
   // Humedad (uint16 big-endian)
   data.humidity = ((bytes[2] << 8) | bytes[3]) / 100.0;
 
-  // Presión (uint16 big-endian)
-  data.pressure = ((bytes[4] << 8) | bytes[5]) / 100.0;
-
   // Batería (uint16 big-endian)
-  data.battery_voltage = ((bytes[6] << 8) | bytes[7]) / 100.0;
+  data.battery_voltage = ((bytes[4] << 8) | bytes[5]) / 100.0;
 
   return {
     data: data,
@@ -84,7 +80,6 @@ Cuando los sensores no están disponibles, el dispositivo envía códigos de err
 
 - **Temperatura**: `-999.0°C` (0xFC18 en complemento a 2)
 - **Humedad**: `-1.0%` (0xFFFF)
-- **Presión**: `-1.0 hPa` (0xFFFF)
 - **Batería**: Siempre disponible (voltaje real)
 
 ## 🏗️ Arquitectura del Sistema
@@ -94,7 +89,7 @@ low-power-project/
 ├── 📁 src/
 │   ├── main.cpp               # 🚀 Punto de entrada Arduino
 │   ├── pgm_board.cpp          # 📡 Lógica LoRaWAN y ciclo principal
-│   ├── sensor.cpp             # 🌡️ Gestión de sensores BME280
+│   ├── sensor.cpp             # 🌡️ Gestión de sensores DHT22
 │   ├── screen.cpp             # 🖥️ Sistema de display OLED
 │   ├── LoRaBoards.cpp         # 🔧 Configuración hardware LilyGo
 │   ├── LoRaBoards.h           # 🔧 Headers hardware
@@ -106,7 +101,8 @@ low-power-project/
 │   ├── loramac.h              # 📋 Headers LoRaWAN
 │   └── utilities.h            # 📋 Utilidades
 ├── 📁 lib/
-│   ├── Adafruit_BME280_Library/  # 🌡️ Librería sensor BME280
+│   ├── Adafruit_BME280_Library/  # 🌡️ Librería sensor BME280 (legacy)
+│   ├── DHT_sensor_library/      # 🌡️ Librería sensor DHT22
 │   ├── Adafruit_BusIO/        # 🔧 Bus I2C/SPI Adafruit
 │   ├── Adafruit_Sensor/       # 📊 Framework sensores Adafruit
 │   ├── LMIC-Arduino/          # 📡 Stack LoRaWAN
@@ -120,9 +116,9 @@ low-power-project/
 ### 🧩 Módulos del Sistema
 
 #### **🌡️ Módulo Sensor (`sensor.cpp`)**
-- **Responsabilidades**: Lectura BME280, validación de datos, manejo de errores
+- **Responsabilidades**: Lectura DHT22, validación de datos, manejo de errores
 - **Funciones clave**:
-  - `getSensorPayload()`: Crea payload de 8 bytes
+  - `getSensorPayload()`: Crea payload de 6 bytes
   - `getSensorDataForDisplay()`: Datos formateados para UI
   - `isSensorAvailable()`: Estado del sensor
 
