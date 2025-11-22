@@ -47,7 +47,7 @@ Ctrl+Shift+P → "PlatformIO: Upload"
 
 ## 📊 Datos Transmitidos
 
-### 📦 Formato del Payload (8 bytes)
+### 📦 Formato del Payload (7 bytes)
 
 | Bytes | Campo | Tipo | Rango | Precisión | Ejemplo |
 |-------|-------|------|-------|-----------|---------|

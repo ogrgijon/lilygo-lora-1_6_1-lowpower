@@ -1,10 +1,10 @@
 /**
- * @file      loramac.cpp
- * @brief     Implementación del módulo LoRaWAN con sensor BME280 y bajo consumo
+ * @file      pgm_board.cpp
+ * @brief     Implementación del módulo LoRaWAN con sensor DHT22 y bajo consumo
  *
  * Este archivo contiene la lógica principal para:
  * - Comunicación LoRaWAN usando LMIC (solo SX1276)
- * - Integración del sensor BME280 (temperatura, humedad, presión)
+ * - Integración del sensor DHT22 (temperatura, humedad)
  * - Gestión de eventos LoRaWAN (join, envío, recepción)
  * - Control de bajo consumo con sueño profundo ESP32
  * - Interfaz con pantalla OLED para feedback visual
@@ -17,7 +17,7 @@
  *
  * Gestión de errores del sensor:
  * - Si el sensor falla al inicializar, el dispositivo continúa funcionando
- * - Envía datos de error (-999 para temperatura, -1 para humedad/presión)
+ * - Envía datos de error (-999 para temperatura, -1 para humedad)
  * - Intenta reinicializar el sensor en cada ciclo
  * - Muestra "Sensor ERROR!" en pantalla cuando hay problemas
  *
@@ -79,6 +79,63 @@ static const unsigned TX_INTERVAL = 30;  // No usado en bajo consumo, pero mante
 #define uS_TO_S_FACTOR 1000000ULL
 static String lora_msg = "";
 
+// Variables para gestión de reintentos de join
+static int joinFailCount = 0;  // Contador de joins fallidos consecutivos
+static bool inJoinBackoff = false;  // Si estamos en período de backoff
+
+/**
+ * @brief Determina el tiempo de backoff basado en el número de fallos consecutivos
+ *
+ * @param failCount Número de joins fallidos consecutivos
+ * @return Tiempo en segundos para el próximo reintento
+ */
+static int getJoinBackoffTime(int failCount) {
+    if (failCount <= 2) {
+        return 10;  // Reintentar cada 10 segundos durante el primer minuto
+    } else if (failCount <= 5) {
+        return 120;  // Dormir 2 minutos
+    } else if (failCount <= 10) {
+        return 300;  // Dormir 5 minutos
+    } else if (failCount <= 20) {
+        return 900;  // Dormir 15 minutos
+    } else {
+        return 1800;  // Dormir 30 minutos
+    }
+}
+
+/**
+ * @brief Entrada en modo sueño ligero (light sleep) manteniendo estado
+ *
+ * Duerme por el tiempo especificado pero mantiene la RAM y el estado del programa.
+ * Se usa para backoff de join sin perder el contador de intentos.
+ *
+ * @param seconds Tiempo en segundos para dormir
+ */
+static void enterLightSleep(int seconds) {
+    Serial.printf("Entrando en sueño ligero por %d segundos (backoff join)...\n", seconds);
+
+    // Apagar pantalla para ahorrar energía durante el sueño
+    turnOffDisplay();
+
+    // Configurar despertar por temporizador
+    esp_sleep_enable_timer_wakeup((uint64_t)seconds * uS_TO_S_FACTOR);
+
+    // Entrar en sueño ligero (mantiene estado de RAM)
+    esp_light_sleep_start();
+
+    // Al despertar, volver a encender la pantalla si es necesario
+    Serial.println("Despertando de sueño ligero");
+}
+
+/**
+ * @brief Reinicia el contador de joins fallidos
+ */
+static void resetJoinFailCount() {
+    joinFailCount = 0;
+    inJoinBackoff = false;
+    Serial.println("Contador de joins fallidos reseteado");
+}
+
 // Funciones callback de LMIC
 void os_getArtEui (u1_t *buf)
 {
@@ -102,14 +159,14 @@ void os_getDevKey (u1_t *buf)
  * @brief     Función callback para envío de datos del sensor
  *
  * Obtiene el payload completo de sensores vía la función getSensorPayload(),
- * que incluye temperatura, humedad, presión y voltaje de batería.
+ * que incluye temperatura, humedad y voltaje de batería.
  * Envía los datos vía LoRaWAN y maneja la interfaz de usuario en pantalla.
  *
- * Formato de datos (8 bytes):
+ * Formato de datos (7 bytes):
  * - Bytes 0-1: Temperatura (°C * 100, int16 big-endian)
  * - Bytes 2-3: Humedad (% * 100, uint16 big-endian)
- * - Bytes 4-5: Presión (hPa * 100, uint16 big-endian)
- * - Bytes 6-7: Batería (V * 100, uint16 big-endian)
+ * - Bytes 4-5: Batería (V * 100, uint16 big-endian)
+ * - Byte 6: Estado de carga solar (0=no, 1=sí)
  *
  * @param j  Puntero al trabajo OS (no usado directamente)
  *
@@ -118,6 +175,12 @@ void os_getDevKey (u1_t *buf)
  */
 void do_send(osjob_t *j)
 {
+    // Verificar si estamos en período de backoff de join
+    if (inJoinBackoff) {
+        Serial.println(F("En período de backoff de join, esperando..."));
+        return;
+    }
+
     // Verificar estado de join
     if (joinStatus == EV_JOINING) {
         Serial.println(F("Aún no unido a la red"));
@@ -153,7 +216,7 @@ void do_send(osjob_t *j)
     // ==================== INTERFAZ DE USUARIO ====================
     // Mostrar datos en pantalla OLED durante el envío
     if (sensorOk) {
-        displaySensorData(temperatura, humedad, presion, bateria, 5000);
+        displaySensorData(temperatura, humedad, bateria, 5000);
     } else {
         // Mostrar solo batería cuando no hay sensor
         sendWarningMessage("Solo bateria", 3000);
@@ -163,10 +226,15 @@ void do_send(osjob_t *j)
     LMIC_setTxData2(1, payload, payloadSize, 0);
 
     if (sensorOk) {
+        #ifdef USE_SENSOR_DHT22
+        Serial.printf("Enviando: Temp=%.2f C, Hum=%.2f %%, Batt=%.2f V\n",
+                     temperatura, humedad, bateria);
+        #else
         Serial.printf("Enviando: Temp=%.2f C, Hum=%.2f %%, Pres=%.2f hPa, Batt=%.2f V\n",
                      temperatura, humedad, presion, bateria);
+        #endif
     } else {
-        Serial.printf("Enviando datos limitados: Temp=ERROR, Hum=ERROR, Pres=ERROR, Batt=%.2f V\n", bateria);
+        Serial.printf("Enviando datos limitados: Temp=ERROR, Hum=ERROR, Batt=%.2f V\n", bateria);
     }
 
     // Nota: No se programa el siguiente envío aquí - se hará después del TX completo en onEvent
@@ -227,20 +295,45 @@ void onEvent (ev_t ev)
             break;
 
         case EV_JOIN_FAILED:
-            Serial.println(F("Join fallido - reintentando..."));
+        {
+            joinFailCount++;
+            Serial.printf("Join fallido #%d - aplicando backoff\n", joinFailCount);
             lora_msg = "Unión OTAA fallida";
 
-            // Mostrar error en pantalla
-            sendWarningMessage("Unión fallida, reintentando...", 3000);
+            int backoffSeconds = getJoinBackoffTime(joinFailCount);
+            inJoinBackoff = true;
 
-            // Programar reintento en 10 segundos
-            os_setTimedCallback(&sendjob, os_getTime() + sec2osticks(10), do_send);
+            // Mostrar información del backoff en pantalla
+            char backoffMsg[32];
+            sprintf(backoffMsg, "Reintento en %d min", backoffSeconds / 60);
+            sendWarningMessage(backoffMsg, 3000);
+
+            Serial.printf("Esperando %d segundos antes del próximo intento de join\n", backoffSeconds);
+
+            // Si es un reintento rápido (primeros intentos), usar callback normal
+            if (backoffSeconds <= 60) {
+                os_setTimedCallback(&sendjob, os_getTime() + sec2osticks(backoffSeconds), do_send);
+            } else {
+                // Para backoffs largos, dormir ligero y luego reiniciar join
+                delay(1000);  // Pequeño delay para mostrar mensaje
+                enterLightSleep(backoffSeconds);
+
+                // Al despertar, reiniciar LMIC y volver a intentar join
+                Serial.println("Reiniciando LMIC después de backoff");
+                LMIC_reset();
+                LMIC_startJoining();
+                os_setTimedCallback(&sendjob, os_getTime() + sec2osticks(5), do_send);
+            }
             break;
+        }
 
         case EV_JOINED:
             Serial.println(F("Unión exitosa a la red LoRaWAN"));
             lora_msg = "Unido!";
             joinStatus = EV_JOINED;
+
+            // Resetear contador de fallos al conectar exitosamente
+            resetJoinFailCount();
 
             // Celebrar éxito en pantalla
             sendSuccessMessage("Unido a TTN!", 3000);
@@ -294,12 +387,12 @@ void enterDeepSleep() {
 // ==================== FUNCIONES PÚBLICAS ====================
 
 /**
- * @brief     Inicializa LMIC, sensor BME280 y configura LoRaWAN OTAA
+ * @brief     Inicializa LMIC, sensor DHT22 y configura LoRaWAN OTAA
  *
  * Esta función configura:
  * - Pines del módulo LoRa (TCXO si aplica)
  * - Sistema operativo LMIC
- * - Sensor BME280 con verificación de conexión
+ * - Sensor DHT22 con verificación de conexión
  * - Sesión LoRaWAN con claves OTAA
  * - Canales TTN para Europa (868MHz)
  * - Parámetros de enlace y tasa de datos

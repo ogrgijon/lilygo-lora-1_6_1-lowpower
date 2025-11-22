@@ -97,7 +97,8 @@
     (SENSOR_HAS_TEMPERATURE ? 2 : 0) + \
     (SENSOR_HAS_HUMIDITY ? 2 : 0) + \
     (SENSOR_HAS_PRESSURE ? 2 : 0) + \
-    2 /* batería siempre */ \
+    2 /* batería siempre */ + \
+    1 /* estado solar */ \
 )
 
 // ============================================================================

@@ -8,6 +8,8 @@ Sistema IoT avanzado que mide parámetros ambientales (temperatura, humedad, pre
 ### ✨ Características Principales
 
 - **📊 Sensores Ambientales**: DHT22 (temperatura, humedad)
+- **☀️ Sistema Solar**: Detección y monitoreo de carga solar integrada
+- **🔄 Backoff Inteligente**: Estrategia exponencial para joins LoRaWAN fallidos
 - **🔋 Gestión de Energía**: PMU AXP2101 con medición de batería y deep sleep
 - **📡 Comunicación LoRaWAN**: OTAA con frecuencia 868MHz (Europa)
 - **🖥️ Interfaz OLED**: Sistema de mensajes inteligente con temporización
@@ -40,13 +42,14 @@ graph TD
 5. **Confirmación**: "Datos enviados!" (2s)
 6. **Reposo**: Pantalla apagada para ahorro de energía
 
-## 📊 Formato del Payload LoRaWAN (6 bytes)
+## 📊 Formato del Payload LoRaWAN (7 bytes)
 
 | Bytes | Campo | Tipo | Rango | Escala | Unidad | Descripción |
 |-------|-------|------|-------|--------|--------|-------------|
 | 0-1 | Temperatura | int16 | -327.68 a 327.67 | ×100 | °C | Temperatura ambiente |
 | 2-3 | Humedad | uint16 | 0.00 a 655.35 | ×100 | % | Humedad relativa |
 | 4-5 | Batería | uint16 | 0.00 a 6.55 | ×100 | V | Voltaje de batería LiPo |
+| 6 | Estado Solar | uint8 | 0-1 | - | - | 0=Batería, 1=Solar activo |
 
 ### 🔧 Decodificador TTN (JavaScript)
 
@@ -65,6 +68,10 @@ function decodeUplink(input) {
 
   // Batería (uint16 big-endian)
   data.battery_voltage = ((bytes[4] << 8) | bytes[5]) / 100.0;
+
+  // Estado solar (uint8)
+  data.solar_charging = bytes[6] === 1;
+  data.energy_source = data.solar_charging ? "Solar + Battery" : "Battery Only";
 
   return {
     data: data,
@@ -90,6 +97,7 @@ low-power-project/
 │   ├── main.cpp               # 🚀 Punto de entrada Arduino
 │   ├── pgm_board.cpp          # 📡 Lógica LoRaWAN y ciclo principal
 │   ├── sensor.cpp             # 🌡️ Gestión de sensores DHT22
+│   ├── solar.cpp              # ☀️ Sistema de carga solar
 │   ├── screen.cpp             # 🖥️ Sistema de display OLED
 │   ├── LoRaBoards.cpp         # 🔧 Configuración hardware LilyGo
 │   ├── LoRaBoards.h           # 🔧 Headers hardware
@@ -118,7 +126,7 @@ low-power-project/
 #### **🌡️ Módulo Sensor (`sensor.cpp`)**
 - **Responsabilidades**: Lectura DHT22, validación de datos, manejo de errores
 - **Funciones clave**:
-  - `getSensorPayload()`: Crea payload de 6 bytes
+  - `getSensorPayload()`: Crea payload de 7 bytes
   - `getSensorDataForDisplay()`: Datos formateados para UI
   - `isSensorAvailable()`: Estado del sensor
 
@@ -135,6 +143,13 @@ low-power-project/
   - `sendScreenMessage()`: Cola de mensajes con tipos
   - `updateDisplay()`: Renderizado y temporización
   - `displaySensorData()`: Formateo de datos ambientales
+
+#### **☀️ Módulo Solar (`solar.cpp`)**
+- **Responsabilidades**: Detección de carga solar, monitoreo de estado energético
+- **Funciones clave**:
+  - `isSolarChargingBattery()`: Detecta carga solar activa
+  - `getSolarChargeStatus()`: Estado detallado de carga
+  - `checkSolarStatus()`: Monitoreo continuo
 
 #### **🔧 Módulo Hardware (`LoRaBoards.cpp`)**
 - **Responsabilidades**: Configuración pines, PMU, inicialización periféricos
@@ -207,8 +222,10 @@ pio device monitor         # Ver logs
 
 ## 🏆 Características Avanzadas
 
+- **🔄 Backoff Exponencial**: Estrategia inteligente para joins LoRaWAN fallidos (10s → 30min)
+- **☀️ Sistema Solar**: Monitoreo de carga solar con payload expandido
 - **🔄 Robustez**: Funciona sin sensores (envía batería + errores)
-- **⚡ Eficiencia**: Gestión inteligente de energía
+- **⚡ Eficiencia**: Gestión inteligente de energía con sueño ligero
 - **📱 UX Optimizada**: Display contextual con temporización
 - **🧪 Testing**: Funciones de depuración incluidas
 - **📊 Monitoreo**: Logs detallados y métricas

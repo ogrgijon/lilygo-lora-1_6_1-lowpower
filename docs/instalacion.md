@@ -171,7 +171,7 @@ TTN muestra claves en formato hexadecimal. Convertir a array de bytes:
 En TTN Console → Applications → Tu App → Payload formatters:
 
 ```javascript
-// Uplink Decoder - 8 bytes payload
+// Uplink Decoder - 7 bytes payload
 function decodeUplink(input) {
   var bytes = input.bytes;
   var data = {};
@@ -184,11 +184,11 @@ function decodeUplink(input) {
   // Humedad (uint16_t big-endian, escala 100)
   data.humidity = ((bytes[2] << 8) | bytes[3]) / 100.0;
 
-  // Presión (uint16_t big-endian, escala 100)
-  data.pressure = ((bytes[4] << 8) | bytes[5]) / 100.0;
-
   // Batería (uint16_t big-endian, escala 100)
-  data.battery_voltage = ((bytes[6] << 8) | bytes[7]) / 100.0;
+  data.battery_voltage = ((bytes[4] << 8) | bytes[5]) / 100.0;
+
+  // Estado solar (uint8_t: 0=no cargando, 1=cargando)
+  data.solar_charging = bytes[6] ? true : false;
 
   return {
     data: data,

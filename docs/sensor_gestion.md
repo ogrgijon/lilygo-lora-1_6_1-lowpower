@@ -155,7 +155,7 @@ git rebase main
 
 | Sensor | Rama | Temp | Hum | Pres | Payload | Notas |
 |--------|------|------|-----|------|---------|-------|
-| DHT22 | feature/sensor-dht22 | ✅ | ✅ | ❌ | 6 bytes | Simple, económico |
+| DHT22 | feature/sensor-dht22 | ✅ | ✅ | ❌ | 7 bytes | Simple, económico, +solar |
 | SHT30 | feature/sensor-sht30 | ✅ | ✅ | ❌ | 6 bytes | Alta precisión |
 | DS18B20 | feature/sensor-ds18b20 | ✅ | ❌ | ❌ | 4 bytes | Solo temperatura |
 | Mock | feature/sensor-mock | ✅ | ✅ | ✅ | 8 bytes | Para testing |
@@ -225,6 +225,184 @@ git checkout -b $BRANCH_NAME
 # ... crear archivos template ...
 # ... actualizar configuración ...
 ```
+
+## Sistema Solar Integrado
+
+### 🎯 **Funcionalidad**
+
+El sistema solar no es un sensor tradicional de temperatura/humedad, sino un **sensor de estado energético** que detecta la presencia de carga solar y el estado de la batería.
+
+### 🔧 **Implementación**
+
+#### **Archivo Dedicado**
+```
+src/
+└── solar.cpp              # Módulo dedicado al sistema solar
+```
+
+#### **Funciones Principales**
+```cpp
+// Detección básica
+bool isSolarChargingBattery();        // ¿Está cargando la batería?
+
+// Estado detallado
+bool getSolarChargeStatus();          // Estado completo de carga
+
+// Monitoreo continuo
+void checkSolarStatus();              // Verificación periódica
+```
+
+#### **Integración con Payload**
+```cpp
+// El estado solar se incluye en el payload LoRaWAN
+uint8_t payload[7] = {
+    temp_high, temp_low,     // 2 bytes - temperatura
+    hum_high, hum_low,       // 2 bytes - humedad  
+    batt_high, batt_low,     // 2 bytes - batería
+    solar_status             // 1 byte - estado solar (0/1)
+};
+```
+
+### 📊 **Características Técnicas**
+
+| Parámetro | Valor | Unidad |
+|-----------|-------|--------|
+| **Detección VBUS** | 4.5-5.5 | V |
+| **Corriente máxima** | 1000 | mA |
+| **Resolución temporal** | 1 | Hz |
+| **Payload adicional** | 1 | byte |
+
+### 🔄 **Estados del Sistema**
+
+#### **Estados de Energía**
+- **🔋 Solo Batería**: `solar_status = 0`
+- **☀️ + 🔋 Solar + Batería**: `solar_status = 1`
+
+#### **Estados de Carga Detallados**
+```cpp
+enum SolarChargeState {
+    SOLAR_DISCONNECTED,      // Panel desconectado
+    SOLAR_CONNECTED_IDLE,    // Panel conectado, no carga
+    SOLAR_CHARGING_ACTIVE,   // Cargando activamente
+    SOLAR_CHARGING_COMPLETE  // Carga completa
+};
+```
+
+### 📡 **Transmisión LoRaWAN**
+
+#### **Decoder TTN Actualizado**
+```javascript
+function decodeUplink(input) {
+    var data = {};
+    var bytes = input.bytes;
+    
+    // Sensores ambientales
+    data.temperature = ((bytes[0] << 8) | bytes[1]) / 100.0;
+    data.humidity = ((bytes[2] << 8) | bytes[3]) / 100.0;
+    data.battery_voltage = ((bytes[4] << 8) | bytes[5]) / 100.0;
+    
+    // Sistema solar
+    data.solar_charging = bytes[6] === 1;
+    data.energy_status = data.solar_charging ? "Solar Powered" : "Battery Only";
+    
+    return { data: data };
+}
+```
+
+### 🔧 **Configuración**
+
+#### **Hardware**
+- **Panel Solar**: Conectado vía USB-C/VBUS
+- **PMU AXP2101**: Detecta automáticamente entrada solar
+- **ESP32-S3**: Monitorea estado vía I2C
+
+#### **Software**
+```cpp
+// En solar.cpp - configuración
+#define SOLAR_CHECK_INTERVAL_MS 1000    // Verificar cada segundo
+#define SOLAR_VBUS_MIN_VOLTAGE 4.0      // Voltaje mínimo de detección
+```
+
+### 📈 **Analytics y Monitoreo**
+
+#### **Métricas Disponibles**
+- **Tiempo de sol diario**: Horas con carga solar activa
+- **Eficiencia energética**: Energía solar aprovechada
+- **Autonomía extendida**: Días adicionales de operación
+- **Tendencias de batería**: Carga vs descarga
+
+#### **Dashboard TTN**
+```javascript
+// Visualización de estado energético
+if (data.solar_charging) {
+    return {
+        status: "🟢 SOLAR ACTIVE",
+        trend: "↗️ CHARGING",
+        autonomy: "EXTENDED"
+    };
+} else {
+    return {
+        status: "🔴 BATTERY ONLY", 
+        trend: "↘️ DISCHARGING",
+        autonomy: "STANDARD"
+    };
+}
+```
+
+### 🧪 **Testing del Sistema Solar**
+
+#### **Pruebas Unitarias**
+```cpp
+void testSolarDetection() {
+    // Simular conexión solar
+    assert(isSolarChargingBattery() == true);
+    
+    // Simular desconexión
+    assert(isSolarChargingBattery() == false);
+    
+    // Verificar payload incluye estado solar
+    uint8_t payload[7];
+    uint8_t size = getSensorPayload(payload, sizeof(payload));
+    assert(size == 7);
+    assert(payload[6] == 1 || payload[6] == 0);
+}
+```
+
+#### **Pruebas de Integración**
+```cpp
+void testSolarLoRaWAN() {
+    // Conectar panel solar
+    // Verificar transmisión incluye estado solar
+    // Comprobar decoder TTN procesa correctamente
+    // Validar dashboard muestra estado correcto
+}
+```
+
+### 🔗 **Compatibilidad con Sensores**
+
+#### **Todos los Sensores**
+- ✅ **DHT22**: Compatible, payload expandido a 7 bytes
+- ✅ **SHT30**: Compatible, requiere actualización payload
+- ✅ **DS18B20**: Compatible, requiere actualización payload
+- ✅ **Mock**: Compatible, simula estado solar
+
+#### **Actualización de Payload**
+```cpp
+// Para sensores existentes, actualizar PAYLOAD_SIZE_BYTES
+#ifdef USE_SENSOR_DHT22
+#define PAYLOAD_SIZE_BYTES (2 + 2 + 2 + 1)  // temp + hum + batt + solar
+#endif
+```
+
+### 🎯 **Beneficios del Sistema Solar**
+
+- ✅ **Autonomía ilimitada**: Carga continua con panel solar
+- ✅ **Monitoreo remoto**: Estado energético visible en TTN
+- ✅ **Analytics avanzados**: Métricas de eficiencia solar
+- ✅ **Bajo costo**: Usa hardware PMU existente
+- ✅ **Transparente**: No afecta funcionamiento normal
+
+---
 
 ## Conclusión
 

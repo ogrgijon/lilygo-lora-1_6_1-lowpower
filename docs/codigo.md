@@ -76,7 +76,7 @@ void do_send(osjob_t *j) {
     }
 
     // 3. Obtener payload del sensor
-    uint8_t payload[8];
+    uint8_t payload[7];
     uint8_t payloadSize = getSensorPayload(payload, sizeof(payload));
 
     if (payloadSize == 0) {
@@ -155,7 +155,7 @@ void onEvent(ev_t ev) {
 
 **Propósito**: Gestión completa de sensores ambientales y batería.
 
-#### 📊 **Payload Format (8 bytes)**
+#### 📊 **Payload Format (7 bytes)**
 ```cpp
 uint8_t getSensorPayload(uint8_t* payload, uint8_t maxSize) {
     // Validar buffer
@@ -176,15 +176,14 @@ uint8_t getSensorPayload(uint8_t* payload, uint8_t maxSize) {
     // Empaquetar en big-endian
     int16_t temp_int = (int16_t)(temp * 100);
     uint16_t hum_int = (uint16_t)(hum * 100);
-    uint16_t pres_int = (uint16_t)(pres * 100);
     uint16_t batt_int = (uint16_t)(batt * 100);
 
     payload[0] = temp_int >> 8;    payload[1] = temp_int & 0xFF;  // Temperatura
     payload[2] = hum_int >> 8;     payload[3] = hum_int & 0xFF;   // Humedad
-    payload[4] = pres_int >> 8;    payload[5] = pres_int & 0xFF;  // Presión
-    payload[6] = batt_int >> 8;    payload[7] = batt_int & 0xFF;  // Batería
+    payload[4] = batt_int >> 8;    payload[5] = batt_int & 0xFF;  // Batería
+    payload[6] = solar_charging ? 1 : 0;                         // Estado solar
 
-    return 8;
+    return 7;
 }
 ```
 

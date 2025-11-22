@@ -129,7 +129,7 @@ src/
 ├── main_otta.ino          # 🚀 Entry point Arduino
 ├── pgm_board.cpp          # 📡 LoRaWAN core
 ├── sensor.cpp             # 🌡️ Sensor management
-├── screen.cpp             # 🖥️ Display system
+├── solar.cpp              # ☀️ Solar charging monitor
 └── LoRaBoards.cpp         # 🔧 Hardware abstraction
 
 include/
@@ -150,7 +150,7 @@ include/
 - Inicialización DHT22 con control de alimentación
 - Lectura temperatura/humedad
 - Validación y códigos de error
-- Formateo payload binario 6 bytes
+- Formateo payload binario 7 bytes
 - Monitoreo batería
 ```
 
@@ -172,9 +172,10 @@ include/
 - Ciclo transmisión/recepción
 - Gestión estados de join
 - Coordinación sistema completo
+- Estrategia de backoff exponencial para joins fallidos
 ```
 
-#### **Módulo Hardware (`LoRaBoards.cpp`)**
+#### **Módulo Hardware (`LoRaBoards.cpp`)**  
 ```cpp
 // Responsabilidades
 - Configuración pines ESP32-S3
@@ -184,7 +185,230 @@ include/
 - Abstracción LilyGo T3-S3
 ```
 
-## ⚙️ Configuración del Sistema
+#### **Módulo Solar (`solar.cpp`)**  
+```cpp
+// Responsabilidades
+- Detección entrada VBUS solar
+- Monitoreo estado de carga batería
+- Estados de carga detallados (pre-carga, constante, etc.)
+- Logging y depuración carga solar
+```
+
+## 🔄 Sistema de Backoff Exponencial para Joins LoRaWAN
+
+### 🎯 **Problema Resuelto**
+
+El sistema implementa una estrategia robusta para manejar situaciones donde el dispositivo no puede conectarse a la red LoRaWAN, evitando el agotamiento de batería por reintentos continuos con la pantalla encendida.
+
+### ⚙️ **Funcionamiento del Sistema**
+
+#### **Variables de Control**
+```cpp
+static int joinFailCount = 0;          // Contador de joins fallidos consecutivos
+static bool inJoinBackoff = false;     // Flag de período de backoff activo
+```
+
+#### **Estrategia de Backoff**
+```cpp
+static int getJoinBackoffTime(int failCount) {
+    if (failCount <= 2) {
+        return 10;      // Reintentar cada 10s (primer minuto)
+    } else if (failCount <= 5) {
+        return 120;     // Dormir 2 minutos
+    } else if (failCount <= 10) {
+        return 300;     // Dormir 5 minutos
+    } else if (failCount <= 20) {
+        return 900;     // Dormir 15 minutos
+    } else {
+        return 1800;    // Dormir 30 minutos
+    }
+}
+```
+
+#### **Estados del Sistema**
+
+| Número de Fallos | Acción | Tiempo de Espera | Tipo de Sueño |
+|------------------|--------|------------------|---------------|
+| 0-2 | Reintento rápido | 10 segundos | Activo |
+| 3-5 | Backoff corto | 2 minutos | Ligero |
+| 6-10 | Backoff medio | 5 minutos | Ligero |
+| 11-20 | Backoff largo | 15 minutos | Ligero |
+| 21+ | Backoff máximo | 30 minutos | Ligero |
+
+### 🔄 **Flujo de Operación**
+
+#### **1. Join Exitoso**
+```cpp
+// Evento EV_JOINED
+joinFailCount = 0;      // Resetear contador
+inJoinBackoff = false;  // Desactivar backoff
+// Continuar con ciclo normal de 60 segundos
+```
+
+#### **2. Join Fallido**
+```cpp
+// Evento EV_JOIN_FAILED
+joinFailCount++;                    // Incrementar contador
+int backoffTime = getJoinBackoffTime(joinFailCount);
+inJoinBackoff = true;              // Activar período de backoff
+
+if (backoffTime <= 60) {
+    // Reintento rápido - usar callback normal
+    os_setTimedCallback(&sendjob, os_getTime() + sec2osticks(backoffTime), do_send);
+} else {
+    // Backoff largo - dormir ligero
+    enterLightSleep(backoffTime);
+    // Al despertar: reiniciar LMIC y reintentar
+}
+```
+
+#### **3. Prevención de Transmisiones Durante Backoff**
+```cpp
+void do_send(osjob_t *j) {
+    if (inJoinBackoff) {
+        Serial.println(F("En período de backoff de join, esperando..."));
+        return;  // No intentar enviar datos
+    }
+    // Continuar con lógica normal...
+}
+```
+
+### 💤 **Sueño Ligero vs Profundo**
+
+#### **Sueño Ligero (`enterLightSleep`)**
+```cpp
+static void enterLightSleep(int seconds) {
+    Serial.printf("Entrando en sueño ligero por %d segundos\n", seconds);
+    turnOffDisplay();  // Apagar pantalla para ahorrar energía
+    
+    esp_sleep_enable_timer_wakeup((uint64_t)seconds * uS_TO_S_FACTOR);
+    esp_light_sleep_start();  // Mantiene estado RAM
+    
+    Serial.println("Despertando de sueño ligero");
+}
+```
+- **Ventajas**: Mantiene variables en RAM, despertar rápido
+- **Uso**: Backoffs largos donde necesitamos preservar estado
+
+#### **Sueño Profundo (`enterDeepSleep`)**
+```cpp
+void enterDeepSleep() {
+    Serial.println("Entrando en sueño profundo por 60 segundos...");
+    turnOffDisplay();
+    
+    esp_sleep_enable_timer_wakeup(SLEEP_TIME_SECONDS * uS_TO_S_FACTOR);
+    esp_deep_sleep_start();  // Reinicio completo
+}
+```
+- **Ventajas**: Consumo mínimo (~20μA), reinicio limpio
+- **Uso**: Ciclo normal después de join exitoso
+
+### 📱 **Interfaz de Usuario**
+
+#### **Mensajes en Pantalla**
+- **Join inicial**: "Uniéndose OTAA...."
+- **Backoff corto**: "Reintento en 10s"
+- **Backoff largo**: "Reintento en 2 min" / "Reintento en 5 min" / etc.
+- **Join exitoso**: "Unido a TTN!" (3 segundos)
+
+#### **Indicadores LED/Serial**
+```cpp
+Serial.printf("Join fallido #%d - aplicando backoff\n", joinFailCount);
+Serial.printf("Esperando %d segundos antes del próximo intento\n", backoffSeconds);
+```
+
+### 🔧 **Configuración y Ajustes**
+
+#### **Parámetros Configurables**
+```cpp
+// En pgm_board.cpp - se pueden ajustar según necesidades
+#define MAX_JOIN_ATTEMPTS 50          // Límite máximo de intentos
+#define BACKOFF_RESET_THRESHOLD 3     // Fallos para resetear estrategia
+
+// Tiempos de backoff (segundos)
+#define BACKOFF_FAST 10               // Reintentos rápidos
+#define BACKOFF_SHORT 120             // 2 minutos
+#define BACKOFF_MEDIUM 300            // 5 minutos
+#define BACKOFF_LONG 900              // 15 minutos
+#define BACKOFF_MAX 1800              // 30 minutos
+```
+
+#### **Monitoreo y Debugging**
+```cpp
+void logJoinStatus() {
+    Serial.printf("=== JOIN STATUS ===\n");
+    Serial.printf("Fail Count: %d\n", joinFailCount);
+    Serial.printf("In Backoff: %s\n", inJoinBackoff ? "YES" : "NO");
+    Serial.printf("Next Backoff: %d seconds\n", getJoinBackoffTime(joinFailCount));
+    Serial.printf("LoRaWAN State: %s\n", joinStatus == EV_JOINED ? "JOINED" : "JOINING");
+}
+```
+
+### 🛡️ **Robustez y Recuperación**
+
+#### **Escenarios de Recuperación**
+- **Red vuelve disponible**: Sistema se conecta automáticamente en el siguiente intento
+- **Batería baja**: El sistema continúa intentando hasta agotamiento (comportamiento esperado)
+- **Reinicio manual**: Contador se resetea, comienza desde cero
+- **Cambio de ubicación**: Estrategia de backoff permite tiempo suficiente para reposicionamiento
+
+#### **Límites de Seguridad**
+- **Contador máximo**: No hay límite superior estricto (continúa con 30 minutos)
+- **Tiempo máximo**: 30 minutos entre intentos (equilibra batería vs conectividad)
+- **Estado preservado**: Sueño ligero mantiene contador entre backoffs
+
+### 📊 **Métricas de Rendimiento**
+
+#### **Tasa de Éxito Esperada**
+- **Cobertura buena**: Join en primeros intentos (< 1 minuto)
+- **Cobertura media**: Join en backoff corto (2-5 minutos)
+- **Cobertura pobre**: Join en backoff largo (15-30 minutos)
+- **Sin cobertura**: Ciclo continuo de 30 minutos
+
+#### **Consumo de Energía**
+- **Reintentos rápidos**: ~100mA (pantalla + LoRa)
+- **Backoff ligero**: ~20μA (solo ESP32)
+- **Sueño profundo**: ~20μA (ciclo normal)
+
+### 🔍 **Troubleshooting**
+
+#### **Problemas Comunes**
+```cpp
+// Join nunca exitoso
+// → Verificar credenciales TTN
+// → Comprobar cobertura LoRaWAN
+// → Validar configuración regional (EU868)
+
+// Contador no se resetea
+// → Verificar que EV_JOINED se dispara
+// → Comprobar estado de joinStatus
+
+// Pantalla se queda encendida
+// → Verificar llamadas a turnOffDisplay()
+// → Comprobar timing de mensajes
+```
+
+#### **Logs de Debug**
+```cpp
+// Habilitar logs detallados
+#define DEBUG_JOIN_BACKOFF 1
+
+#if DEBUG_JOIN_BACKOFF
+    Serial.printf("[BACKOFF] Fail #%d, waiting %d seconds\n", joinFailCount, backoffSeconds);
+#endif
+```
+
+### 🎯 **Beneficios del Sistema**
+
+- ✅ **Ahorro de batería**: Pantalla se apaga durante backoffs largos
+- ✅ **Conectividad robusta**: Estrategia progresiva para diferentes condiciones
+- ✅ **Transparencia**: Usuario informado del estado del sistema
+- ✅ **Recuperación automática**: Sistema se adapta a cambios en cobertura
+- ✅ **Estado preservado**: No pierde progreso entre intentos
+
+---
+
+**🔄 Sistema de backoff exponencial garantiza robustez en condiciones variables de conectividad LoRaWAN**## ⚙️ Configuración del Sistema
 
 ### 📡 **Parámetros LoRaWAN**
 
@@ -329,7 +553,7 @@ Flash: [===       ]  25.5% (used 267313 bytes from 1048576 bytes)
 
 #### **Configuración TTN**
 ```javascript
-// Decoder para 6 bytes payload (DHT22: temperatura, humedad, batería)
+// Decoder para 7 bytes payload (DHT22: temperatura, humedad, batería, estado solar)
 function decodeUplink(input) {
   var bytes = input.bytes;
   var data = {};
@@ -344,6 +568,9 @@ function decodeUplink(input) {
 
   // Batería (big-endian, unsigned)
   data.battery_voltage = ((bytes[4] << 8) | bytes[5]) / 100.0;
+
+  // Estado solar (byte 6: 0=no cargando, 1=cargando)
+  data.solar_charging = bytes[6] ? true : false;
 
   return { data: data };
 }

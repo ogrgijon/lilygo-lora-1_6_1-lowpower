@@ -12,6 +12,9 @@
 
 #include "sensor_config.h"
 
+// Declaración externa para funciones de carga solar
+extern bool isSolarChargingBattery();
+
 // ============================================================================
 // IMPLEMENTACIONES DE SENSORES (UNA SOLA POR CONFIGURACIÓN)
 // ============================================================================

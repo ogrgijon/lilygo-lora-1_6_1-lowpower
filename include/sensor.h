@@ -64,16 +64,16 @@ void setSensorAvailableForTesting(bool available);
 /**
  * @brief Obtiene todos los datos del sensor empaquetados para envío LoRaWAN
  *
- * Lee temperatura, humedad, presión y voltaje de batería, los valida
+ * Lee temperatura, humedad y voltaje de batería, los valida
  * y los empaqueta en formato binario optimizado.
  *
- * Formato de datos (8 bytes):
+ * Formato de datos (7 bytes):
  * - Bytes 0-1: Temperatura (°C * 100, int16 big-endian)
  * - Bytes 2-3: Humedad (% * 100, uint16 big-endian)
- * - Bytes 4-5: Presión (hPa * 100, uint16 big-endian)
- * - Bytes 6-7: Batería (V * 100, uint16 big-endian)
+ * - Bytes 4-5: Batería (V * 100, uint16 big-endian)
+ * - Byte 6: Estado de carga solar (0=no, 1=sí)
  *
- * @param payload Buffer donde almacenar los datos empaquetados (mínimo 8 bytes)
+ * @param payload Buffer donde almacenar los datos empaquetados (mínimo 7 bytes)
  * @param maxSize Tamaño máximo del buffer
  * @return Número de bytes escritos en el payload, o 0 si hay error
  */

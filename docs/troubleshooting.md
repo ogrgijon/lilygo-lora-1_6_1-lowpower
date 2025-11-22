@@ -100,6 +100,103 @@ EV_JOIN_FAILED (repetitivo)
 
 ---
 
+### ⏱️ **2.1. Sistema de Backoff Exponencial para Joins**
+
+#### **Síntomas**
+```
+EV_JOIN_FAILED
+Esperando 10 segundos antes del siguiente intento...
+EV_JOIN_FAILED
+Esperando 2 minutos antes del siguiente intento...
+EV_JOIN_FAILED
+Esperando 5 minutos antes del siguiente intento...
+Pantalla permanece encendida durante backoffs largos
+Batería se agota rápidamente durante joins fallidos
+```
+
+#### **Diagnóstico Paso a Paso**
+1. **Verificar implementación del backoff**
+   ```cpp
+   // Verificar en main_otta.ino o pgm_board.cpp
+   // Función de cálculo de tiempo de backoff
+   uint32_t calculateBackoffTime(uint8_t attempt) {
+       uint32_t baseTime = BACKOFF_BASE_TIME; // 10 segundos
+       uint32_t maxTime = BACKOFF_MAX_TIME;   // 30 minutos
+       uint32_t time = baseTime * (1 << attempt); // Exponencial
+       return min(time, maxTime);
+   }
+   ```
+
+2. **Verificar configuración de backoff**
+   ```cpp
+   // Verificar constantes definidas
+   #define BACKOFF_BASE_TIME 10000        // 10 segundos
+   #define BACKOFF_MAX_TIME 1800000       // 30 minutos
+   #define BACKOFF_MAX_ATTEMPTS 5         // Máximo 5 intentos
+   #define LIGHT_SLEEP_THRESHOLD 300000   // 5 minutos - usar light sleep
+   ```
+
+3. **Monitoreo del estado del backoff**
+   ```cpp
+   // Verificar variables de estado
+   static uint8_t joinAttempts = 0;
+   static uint32_t backoffStartTime = 0;
+   static bool inBackoffPeriod = false;
+   ```
+
+4. **Verificar gestión de energía durante backoff**
+   ```cpp
+   // Verificar modo sleep durante backoff largo
+   if (backoffTime >= LIGHT_SLEEP_THRESHOLD) {
+       Serial.printf("Backoff largo (%d min) - usando light sleep\n",
+                    backoffTime / 60000);
+       enterLightSleep(backoffTime);
+   } else {
+       Serial.printf("Backoff corto (%d seg) - esperando activo\n",
+                    backoffTime / 1000);
+       delay(backoffTime);
+   }
+   ```
+
+#### **Soluciones**
+- **Configuración correcta**: Verificar constantes BACKOFF_* definidas
+- **Implementación completa**: Asegurar función `calculateBackoffTime()` presente
+- **Gestión de energía**: Confirmar light sleep para backoffs > 5 minutos
+- **Reset de contador**: Join exitoso debe resetear `joinAttempts = 0`
+- **Límite de intentos**: Máximo 5 intentos antes de reset completo
+
+#### **Configuración Recomendada**
+```cpp
+// Configuración óptima para bajo consumo
+#define BACKOFF_BASE_TIME 10000        // 10s - primer reintento
+#define BACKOFF_MAX_TIME 1800000       // 30min - máximo backoff
+#define BACKOFF_MAX_ATTEMPTS 5         // Reset después de 5 fallos
+#define LIGHT_SLEEP_THRESHOLD 300000   // 5min - cambiar a light sleep
+```
+
+#### **Monitoreo del Sistema de Backoff**
+```cpp
+void printBackoffStatus() {
+    Serial.println("=== ESTADO BACKOFF ===");
+    Serial.printf("Intentos de join: %d/%d\n", joinAttempts, BACKOFF_MAX_ATTEMPTS);
+    Serial.printf("En período backoff: %s\n", inBackoffPeriod ? "SÍ" : "NO");
+    if (inBackoffPeriod) {
+        uint32_t elapsed = millis() - backoffStartTime;
+        uint32_t remaining = calculateBackoffTime(joinAttempts) - elapsed;
+        Serial.printf("Tiempo restante: %d segundos\n", remaining / 1000);
+    }
+    Serial.println("=====================");
+}
+```
+
+#### **Problemas Comunes y Soluciones**
+- **Pantalla siempre encendida**: Verificar `LIGHT_SLEEP_THRESHOLD` y `enterLightSleep()`
+- **Batería se agota**: Asegurar deep sleep normal cuando no hay backoff
+- **Backoff no progresa**: Verificar contador `joinAttempts` se incrementa
+- **Reset no funciona**: Confirmar `joinAttempts = 0` en join exitoso
+
+---
+
 ### 🌡️ **3. Sensor DHT22 No Responde**
 
 #### **Síntomas**
@@ -281,20 +378,21 @@ ACK recibido de gateway
 1. **Payload format**
    ```cpp
    // Verificar formato 6 bytes
-   uint8_t payload[6];
+   uint8_t payload[7];
    uint8_t size = getSensorPayload(payload, sizeof(payload));
    Serial.printf("Payload size: %d bytes\n", size);
    ```
 
 2. **Decoder TTN**
    ```javascript
-   // Decoder actualizado para 6 bytes
+   // Decoder actualizado para 7 bytes
    function decodeUplink(input) {
      var bytes = input.bytes;
      return {
        temperature: ((bytes[0] << 8) | bytes[1]) / 100.0,
        humidity: ((bytes[2] << 8) | bytes[3]) / 100.0,
-       battery: ((bytes[4] << 8) | bytes[5]) / 100.0
+       battery: ((bytes[4] << 8) | bytes[5]) / 100.0,
+       solar_charging: bytes[6] ? true : false
      };
    }
    ```
@@ -308,7 +406,7 @@ ACK recibido de gateway
    ```
 
 #### **Soluciones**
-- **Decoder**: Actualizar para 6 bytes (temperatura, humedad, batería)
+- **Decoder**: Actualizar para 7 bytes (temperatura, humedad, batería, estado solar)
 - **Escala**: Verificar división por 100
 - **TTN Console**: Confirmar dispositivo registrado y activo
 - **Gateway**: Verificar recepción de uplinks

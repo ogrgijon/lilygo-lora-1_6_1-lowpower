@@ -255,14 +255,14 @@ void sendSuccessMessage(const String& text, uint32_t duration) {
 /**
  * @brief Muestra datos del sensor en la pantalla
  */
-void displaySensorData(float temp, float hum, float pres, float battery, uint32_t duration) {
+void displaySensorData(float temp, float hum, float battery, uint32_t duration) {
     char buffer[64];
-    if (temp == -999.0f && hum == -1.0f && pres == -1.0f) {
+    if (temp == -999.0f && hum == -1.0f) {
         // Datos de error del sensor
         sendScreenMessage(MSG_ERROR, "Sensor ERROR!", duration);
     } else {
         // Datos válidos del sensor
-        sprintf(buffer, "T:%.1fC H:%.1f%% P:%.1fhPa B:%.2fV", temp, hum, pres, battery);
+        sprintf(buffer, "T:%.1fC H:%.1f%% B:%.2fV", temp, hum, battery);
         sendScreenMessage(MSG_SENSOR_DATA, buffer, duration);
     }
 }

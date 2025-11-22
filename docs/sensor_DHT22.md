@@ -73,7 +73,7 @@ Para probar esta configuración:
    - "DHT22: Esperando 2000 ms para estabilización..."
    - "DHT22: Lectura exitosa - Temp: XX.X°C, Hum: XX.X%"
    - "DHT22: Alimentación OFF"
-4. Los datos se enviarán en formato LoRaWAN con 6 bytes de payload
+4. Los datos se enviarán en formato LoRaWAN con 7 bytes de payload
 
 ## Troubleshooting
 

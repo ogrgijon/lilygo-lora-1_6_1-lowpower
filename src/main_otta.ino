@@ -6,7 +6,7 @@
  * Inicializa el hardware y la comunicación LoRaWAN, luego entra en el bucle principal.
  *
  * Características:
- * - Integración con sensor BME280 para temperatura, humedad y presión
+ * - Integración con sensor DHT22 para temperatura y humedad
  * - Envío periódico de datos vía LoRaWAN OTAA
  * - Gestión de energía: pantalla activa solo en fases críticas
  * - Sueño profundo para minimizar consumo
@@ -33,7 +33,7 @@ void setup()
     // Retraso necesario para estabilización de alimentación al encender
     delay(1500);
     Serial.println("Proyecto de Sensor LoRaWAN de Bajo Consumo Iniciando...");
-    setupLMIC();    // Inicializa LMIC y sensor BME280
+    setupLMIC();    // Inicializa LMIC y sensor DHT22
 
     // Inicializar sistema de pantalla
     initDisplay();

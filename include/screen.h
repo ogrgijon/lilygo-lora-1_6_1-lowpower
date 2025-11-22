@@ -89,11 +89,10 @@ void sendSuccessMessage(const String& text, uint32_t duration = 2000);
  *
  * @param temp Temperatura en °C
  * @param hum Humedad en %
- * @param pres Presión en hPa
  * @param battery Voltaje de batería en V
  * @param duration Duración en milisegundos (por defecto 5000ms)
  */
-void displaySensorData(float temp, float hum, float pres, float battery, uint32_t duration = 5000);
+void displaySensorData(float temp, float hum, float battery, uint32_t duration = 5000);
 
 /**
  * @brief Fuerza la actualización inmediata de la pantalla
