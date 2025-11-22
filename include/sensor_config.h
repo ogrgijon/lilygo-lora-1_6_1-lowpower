@@ -53,8 +53,10 @@
 #define SENSOR_HAS_TEMPERATURE true
 #define SENSOR_HAS_HUMIDITY true
 #define SENSOR_HAS_PRESSURE false
-#define DHT_PIN 13  // Pin GPIO para DHT22
+#define DHT_PIN 13  // Pin GPIO para datos DHT22
 #define DHT_TYPE DHT22
+#define DHT_POWER_PIN 12  // Pin GPIO para controlar alimentación del DHT22
+#define DHT_POWER_ON_DELAY_MS 2000  // Tiempo de estabilización después de encender (ms)
 #endif
 
 // Configuración SHT30

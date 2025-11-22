@@ -22,9 +22,12 @@ code .
 ```
 
 #### 2. **Configurar Credenciales LoRaWAN**
-Editar `src/pgm_board.cpp`:
-```cpp
-// Reemplazar con tus credenciales TTN
+```bash
+# Copiar el archivo de plantilla
+cp include/lorawan_config_template.h include/lorawan_config.h
+
+# Editar las credenciales en include/lorawan_config.h
+# Reemplazar con tus credenciales TTN
 static const u1_t PROGMEM APPEUI[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 static const u1_t PROGMEM DEVEUI[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 static const u1_t PROGMEM APPKEY[16] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,

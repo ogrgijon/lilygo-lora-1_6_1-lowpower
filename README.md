@@ -120,8 +120,12 @@ Para operación continua, una placa solar debe suministrar al menos el consumo d
    ```
 
 2. **Configurar credenciales TTN**
-   ```cpp
-   // src/pgm_board.cpp
+   ```bash
+   # Copiar plantilla de configuración
+   cp include/lorawan_config_template.h include/lorawan_config.h
+   
+   # Editar con tus claves TTN
+   # include/lorawan_config.h
    static const u1_t PROGMEM APPEUI[8] = {TU_APPEUI_AQUI};
    static const u1_t PROGMEM DEVEUI[8] = {TU_DEVEUI_AQUI};
    static const u1_t PROGMEM APPKEY[16] = {TU_APPKEY_AQUI};
@@ -154,6 +158,8 @@ low-power-project/
 │   ├── screen.h               # 📋 API display
 │   ├── LoRaBoards.h           # 📋 API hardware LilyGo
 │   ├── loramac.h              # 📋 Headers LoRaWAN
+│   ├── lorawan_config.h       # 🔐 Claves LoRaWAN (ignoradas por git)
+│   ├── lorawan_config_template.h # 📋 Plantilla de configuración segura
 │   └── utilities.h            # 📋 Utilidades comunes
 ├── 📁 lib/
 │   ├── Adafruit_BME280_Library/  # 🌡️ Librería sensor BME280

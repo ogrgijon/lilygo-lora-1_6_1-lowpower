@@ -12,12 +12,11 @@ include/
 └── sensor_interface.h   # Interfaz genérica de sensores
 
 src/
-├── sensor.cpp           # Archivo legacy (para compatibilidad)
-├── sensor_dispatcher.cpp # Dispatcher que incluye la implementación correcta
-├── sensor_bme280.cpp    # Implementación BME280
-├── sensor_dht22.cpp     # Implementación DHT22
-└── sensor_[nombre].cpp  # Implementaciones futuras
+├── sensor.cpp           # Implementaciones condicionales de sensores
+└── main.cpp             # Código principal
 ```
+
+**Nota**: Las implementaciones de sensores se incluyen condicionalmente en `sensor.cpp` usando `#ifdef` directives, no como archivos separados.
 
 ### Interfaz Genérica
 
@@ -59,7 +58,24 @@ git checkout -b feature/sensor-multi-sensor
 
 ### 3. Implementar el Sensor
 
-**Crear `src/sensor_[nombre].cpp`:**
+**Editar `src/sensor.cpp` y agregar implementación condicional:**
+```cpp
+#ifdef USE_SENSOR_[NOMBRE]
+// Implementación [NOMBRE]
+#include <libreria_del_sensor.h>
+#include "sensor_interface.h"
+#include "sensor_config.h"
+
+// Variables y funciones específicas del sensor
+bool sensor_init(void) {
+    // Inicialización específica
+    return true;
+}
+// ... otras funciones
+#endif // USE_SENSOR_[NOMBRE]
+```
+
+**O crear archivo separado `src/sensor_[nombre].cpp` (alternativo):**
 ```cpp
 #include "sensor_interface.h"
 #include "sensor_config.h"
@@ -67,7 +83,6 @@ git checkout -b feature/sensor-multi-sensor
 
 // Implementar todas las funciones de la interfaz
 bool sensor_init(void) { /* ... */ }
-bool sensor_is_available(void) { /* ... */ }
 // ... etc
 ```
 
@@ -109,8 +124,8 @@ git branch -a
 
 # Cambiar a rama específica
 git checkout feature/sensor-dht22
-git checkout feature/sensor-bme280
-git checkout main  # Rama por defecto (BME280)
+git checkout feature/sensor-sht30
+git checkout main
 ```
 
 ### Merge a Main (cuando esté listo)
@@ -140,7 +155,6 @@ git rebase main
 
 | Sensor | Rama | Temp | Hum | Pres | Payload | Notas |
 |--------|------|------|-----|------|---------|-------|
-| BME280 | main | ✅ | ✅ | ✅ | 8 bytes | Sensor por defecto |
 | DHT22 | feature/sensor-dht22 | ✅ | ✅ | ❌ | 6 bytes | Simple, económico |
 | SHT30 | feature/sensor-sht30 | ✅ | ✅ | ❌ | 6 bytes | Alta precisión |
 | DS18B20 | feature/sensor-ds18b20 | ✅ | ❌ | ❌ | 4 bytes | Solo temperatura |
@@ -162,7 +176,8 @@ Cada rama debe incluir:
 - Instrucciones de testing
 
 ### 3. Compatibilidad
-- Mantener interfaz legacy en `sensor_dispatcher.cpp`
+- Usar compilación condicional en `sensor.cpp` con `#ifdef` directives
+- Mantener funciones legacy en la parte inferior de `sensor.cpp`
 - No romper código existente en `main.cpp`
 - Documentar cambios incompatibles
 

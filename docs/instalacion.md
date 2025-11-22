@@ -140,16 +140,19 @@ Después del registro, copiar:
 - **Device EUI** (DEVEUI)
 - **App Key** (APPKEY)
 
-### 🔑 **Paso 8: Configurar Credenciales en Código**
+### 🔑 **Paso 8: Configurar Credenciales LoRaWAN**
 
-Editar `src/pgm_board.cpp`:
+**IMPORTANTE**: Las claves LoRaWAN ahora están en un archivo separado por seguridad.
 
-```cpp
-// Reemplazar con tus credenciales TTN (formato MSB first)
-static const u1_t PROGMEM APPEUI[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-static const u1_t PROGMEM DEVEUI[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-static const u1_t PROGMEM APPKEY[16] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                                        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+```bash
+# Copiar la plantilla de configuración
+cp include/lorawan_config_template.h include/lorawan_config.h
+
+# Editar el archivo con tus claves TTN
+# include/lorawan_config.h
+static const u1_t PROGMEM APPEUI[8] = {TU_APPEUI_AQUI};
+static const u1_t PROGMEM DEVEUI[8] = {TU_DEVEUI_AQUI};
+static const u1_t PROGMEM APPKEY[16] = {TU_APPKEY_AQUI};
 ```
 
 #### **Conversión de Credenciales TTN**
@@ -160,6 +163,8 @@ TTN muestra claves en formato hexadecimal. Convertir a array de bytes:
 - Código: `{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}`
 
 **Herramienta de conversión online**: [hex-to-byte-array](https://www.scadacore.com/tools/programming-calculators/online-hex-converter/)
+
+**Nota de Seguridad**: El archivo `lorawan_config.h` está incluido en `.gitignore` y NO debe commitearse al repositorio.
 
 ### 📊 **Paso 9: Configurar Decoder TTN**
 

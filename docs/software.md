@@ -136,6 +136,9 @@ include/
 ├── sensor.h               # 📋 Sensor API
 ├── screen.h               # 📋 Display API
 ├── LoRaBoards.h           # 📋 Hardware API
+├── loramac.h              # 📋 LoRaWAN headers
+├── lorawan_config.h       # 🔐 LoRaWAN keys (gitignored)
+├── lorawan_config_template.h # 📋 Secure config template
 └── utilities.h            # 📋 Common utilities
 ```
 
@@ -187,12 +190,21 @@ include/
 
 #### **Credenciales OTAA (Requeridas)**
 ```cpp
-// Obtener de TTN Console → Applications → Your App → Devices → Your Device
-static const u1_t PROGMEM APPEUI[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-static const u1_t PROGMEM DEVEUI[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-static const u1_t PROGMEM APPKEY[16] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                                        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+// Archivo: include/lorawan_config.h (NO commitear - está en .gitignore)
+// Copiar de include/lorawan_config_template.h y actualizar con tus valores TTN
+
+// Application EUI (AppEUI) - LSB format
+static const u1_t PROGMEM APPEUI[8] = {0xXX, 0xXX, 0xXX, 0xXX, 0xXX, 0xXX, 0xXX, 0xXX};
+
+// Device EUI (DevEUI) - LSB format
+static const u1_t PROGMEM DEVEUI[8] = {0xXX, 0xXX, 0xXX, 0xXX, 0xXX, 0xXX, 0xXX, 0xXX};
+
+// Application Key (AppKey) - MSB format
+static const u1_t PROGMEM APPKEY[16] = {0xXX, 0xXX, 0xXX, 0xXX, 0xXX, 0xXX, 0xXX, 0xXX,
+                                        0xXX, 0xXX, 0xXX, 0xXX, 0xXX, 0xXX, 0xXX, 0xXX};
 ```
+
+**Nota de Seguridad**: Las credenciales están en un archivo separado (`lorawan_config.h`) que está incluido en `.gitignore` para evitar commitear información sensible.
 
 #### **Configuración Regional**
 ```cpp
