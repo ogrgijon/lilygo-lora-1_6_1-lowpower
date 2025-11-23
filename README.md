@@ -26,7 +26,7 @@
 [![LoRaWAN](https://img.shields.io/badge/LoRaWAN-1.0.3-orange.svg)](https://lora-alliance.org)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**Sistema IoT completo con arquitectura modular** para monitoreo ambiental remoto. Implementa medición precisa de temperatura, humedad, presión atmosférica y voltaje de batería, transmitiendo datos por LoRaWAN cada 60 segundos con **consumo ultra-bajo** (Hasta < 20μA en deep sleep).
+**Sistema IoT completo con arquitectura modular** para monitoreo ambiental remoto. Implementa medición precisa de temperatura, humedad, presión atmosférica y voltaje de batería, transmitiendo datos por LoRaWAN cada 60 segundos con **consumo ultra-bajo** (Hasta < 20μA en deep sleep). Incluye **sistema de carga solar inteligente** y **backoff exponencial** para máxima fiabilidad.
 
 ## 🎯 Características Principales
 
@@ -42,9 +42,12 @@
 - **Región EU868**: Optimizado para Europa 868MHz
 
 ### 🔋 **Gestión de Energía Inteligente**
-- **Deep Sleep**: 60 segundos entre ciclos - por defecto -
+- **Deep Sleep**: 60 segundos entre ciclos - por defecto - configurable
 - **Monitoreo batería**: Voltaje en tiempo real
+- **Carga Solar**: Detección automática de panel solar
+- **Backoff Exponencial**: Reintentos inteligentes para joins fallidos
 - **Auto-apagado**: Componentes se desactivan automáticamente
+- **Watchdog Timer**: Reinicio automático si no hay actividad por 5 minutos
 - **Eficiencia**: < 0.5mAh por ciclo (autonomía ~4 días)
 
 ### 🔋 **Ejemplos de Autonomía según Tiempo de Deep Sleep**
@@ -87,18 +90,20 @@ Para operación continua, una placa solar debe suministrar al menos el consumo d
 
 ## 📊 Datos Transmitidos
 
-### 📦 **Payload de 6 Bytes (Big-Endian)**
+### 📦 **Payload de 7 Bytes (Big-Endian)**
 
 | Campo | Bytes | Tipo | Rango | Precisión | Ejemplo |
 |-------|-------|------|-------|-----------|---------|
 | **Temperatura** | 0-1 | int16_t | -40°C a 80°C | 0.01°C | `25.67°C` |
 | **Humedad** | 2-3 | uint16_t | 0-100% | 0.01% | `65.43%` |
 | **Batería** | 4-5 | uint16_t | 0-5V | 0.01V | `3.85V` |
+| **Estado Solar** | 6 | uint8_t | 0-1 | - | `1` (cargando) |
 
 ### 🔍 **Códigos de Error**
 - **Temperatura**: `-999.0°C` (sensor fallando)
 - **Humedad**: `-1.0%` (sensor fallando)
 - **Batería**: Siempre disponible
+- **Estado Solar**: `0` (no cargando), `1` (cargando)
 
 ## 🚀 Inicio Rápido
 
@@ -144,24 +149,26 @@ Para operación continua, una placa solar debe suministrar al menos el consumo d
 ```
 low-power-project/
 ├── 📁 src/
-│   ├── main.cpp               # 🚀 Entry point Arduino (renombrado)
+│   ├── main_otta.ino          # 🚀 Entry point Arduino
 │   ├── pgm_board.cpp          # 📡 Núcleo LoRaWAN
 │   ├── sensor.cpp             # 🌡️ Gestión de sensores DHT22
 │   ├── screen.cpp             # 🖥️ Sistema display OLED
+│   ├── solar.cpp              # ☀️ Sistema de carga solar
 │   ├── LoRaBoards.cpp         # 🔧 Abstracción hardware LilyGo
 │   ├── LoRaBoards.h           # 🔧 Headers hardware
 │   └── utilities.h            # 📋 Utilidades comunes
 ├── 📁 include/
 │   ├── sensor.h               # 📋 API sensores
 │   ├── screen.h               # 📋 API display
+│   ├── sensor_config.h        # ⚙️ Configuración de sensores
+│   ├── sensor_interface.h     # 🔌 Interface de sensores
 │   ├── LoRaBoards.h           # 📋 API hardware LilyGo
 │   ├── loramac.h              # 📋 Headers LoRaWAN
-│   ├── lorawan_config.h       # 🔐 Claves LoRaWAN (ignoradas por git)
-│   ├── lorawan_config_template.h # 📋 Plantilla de configuración segura
+│   ├── lorawan_config.h       # 🔐 Claves LoRaWAN
+│   ├── lorawan_config_template.h # 📋 Plantilla de configuración
 │   └── utilities.h            # 📋 Utilidades comunes
 ├── 📁 lib/
 │   ├── Adafruit_BME280_Library/  # 🌡️ Librería sensor BME280 (legacy)
-│   ├── DHT_sensor_library/      # 🌡️ Librería sensor DHT22
 │   ├── Adafruit_BusIO/        # 🔧 Bus I2C/SPI Adafruit
 │   ├── Adafruit_Sensor/       # 📊 Framework sensores Adafruit
 │   ├── LMIC-Arduino/          # 📡 Stack LoRaWAN
@@ -176,9 +183,17 @@ low-power-project/
 │   ├── codigo.md              # 📝 Estructura del código
 │   ├── software.md            # 💻 Configuración técnica
 │   ├── hardware.md            # 🔧 Especificaciones hardware
+│   ├── sensor_DHT22.md        # 🌡️ Documentación sensor DHT22
+│   ├── sensor_gestion.md      # ⚙️ Gestión de configuración de sensores
+│   ├── LORAWAN_SETUP.md       # 📡 Setup LoRaWAN
+│   ├── ttn_decoder.md         # 📊 Decoder TTN
+│   ├── ttn_decoder_test.js    # 🧪 Test decoder TTN
+│   ├── ttn_payload_decoder.js # 📦 Payload decoder TTN
 │   ├── libreriasyterceros.md  # 📋 Librerías y licencias
+│   ├── responsabilidad.md     # ⚠️ Uso responsable
 │   └── troubleshooting.md     # 🔧 Solución de problemas
 ├── platformio.ini             # ⚙️ Configuración PlatformIO
+├── .gitignore                 # 🚫 Archivos ignorados
 └── README.md                  # 📋 Este archivo
 ```
 
@@ -234,6 +249,10 @@ low-power-project/
 - **[Código](docs/codigo.md)**: Estructura y flujos de ejecución
 - **[Software](docs/software.md)**: Dependencias y configuración
 - **[Hardware](docs/hardware.md)**: Especificaciones técnicas
+- **[Sensor DHT22](docs/sensor_DHT22.md)**: Documentación específica del sensor
+- **[Gestión de Sensores](docs/sensor_gestion.md)**: Configuración y branching
+- **[Setup LoRaWAN](docs/LORAWAN_SETUP.md)**: Configuración de conectividad
+- **[Decoder TTN](docs/ttn_decoder.md)**: Decodificación de datos
 - **[Librerías de Terceros](docs/libreriasyterceros.md)**: Propietarios, licencias y derechos
 
 ## 🔗 Integración TTN
@@ -241,20 +260,39 @@ low-power-project/
 ### 📊 **Decoder JavaScript**
 ```javascript
 function decodeUplink(input) {
+  var decoded = {};
+
+  // Verificar tamaño de payload (7 bytes)
+  if (input.bytes.length !== 7) {
+    return {
+      errors: ['Tamaño de payload inválido. Esperado 7 bytes, recibido ' + input.bytes.length]
+    };
+  }
+
   var bytes = input.bytes;
-  return {
-    data: {
-      temperature: ((bytes[0] << 8) | bytes[1]) / 100.0,
-      humidity: ((bytes[2] << 8) | bytes[3]) / 100.0,
-      battery_voltage: ((bytes[4] << 8) | bytes[5]) / 100.0
-    }
-  };
+
+  // Decodificar temperatura (bytes 0-1, big-endian, *100)
+  var tempRaw = (bytes[0] << 8) | bytes[1];
+  if (tempRaw > 32767) tempRaw -= 65536; // Manejar negativos
+  decoded.temperature = tempRaw / 100.0;
+
+  // Decodificar humedad (bytes 2-3, big-endian, *100)
+  decoded.humidity = ((bytes[2] << 8) | bytes[3]) / 100.0;
+
+  // Decodificar batería (bytes 4-5, big-endian, *100)
+  decoded.battery = ((bytes[4] << 8) | bytes[5]) / 100.0;
+
+  // Decodificar estado solar (byte 6)
+  decoded.solar_charging = bytes[6] ? true : false;
+
+  return { data: decoded };
 }
 ```
 
 ### 📈 **Dashboard TTN**
 - Temperatura y humedad en gráficos
 - Voltaje de batería con alertas
+- Estado de carga solar (cargando/no cargando)
 - RSSI/SNR para calidad de enlace
 - Historial de transmisiones
 

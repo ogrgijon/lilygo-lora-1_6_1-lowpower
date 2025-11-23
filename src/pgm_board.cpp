@@ -35,6 +35,7 @@
 #include "LoRaBoards.h"     // Configuración de hardware
 #include "sensor.h"         // Funciones del sensor
 #include "screen.h"         // Funciones de pantalla
+#include "solar.h"          // Funciones de carga solar
 
 // Objeto global del sensor BME280
 // Ahora definido en sensor.cpp
@@ -91,11 +92,11 @@ static bool inJoinBackoff = false;  // Si estamos en período de backoff
  */
 static int getJoinBackoffTime(int failCount) {
     if (failCount <= 2) {
-        return 10;  // Reintentar cada 10 segundos durante el primer minuto
+        return 120;  // Esperar 2 minutos para dar tiempo al proceso de join LoRaWAN
     } else if (failCount <= 5) {
-        return 120;  // Dormir 2 minutos
-    } else if (failCount <= 10) {
         return 300;  // Dormir 5 minutos
+    } else if (failCount <= 10) {
+        return 600;  // Dormir 10 minutos
     } else if (failCount <= 20) {
         return 900;  // Dormir 15 minutos
     } else {
@@ -107,7 +108,7 @@ static int getJoinBackoffTime(int failCount) {
  * @brief Entrada en modo sueño ligero (light sleep) manteniendo estado
  *
  * Duerme por el tiempo especificado pero mantiene la RAM y el estado del programa.
- * Se usa para backoff de join sin perder el contador de intentos.
+ * Se usa para backoffs largos de join LoRaWAN sin perder el contador de intentos.
  *
  * @param seconds Tiempo en segundos para dormir
  */
@@ -209,6 +210,11 @@ void do_send(osjob_t *j)
         return;
     }
 
+    // ==================== AGREGAR ESTADO SOLAR ====================
+    // Agregar estado de carga solar como byte adicional
+    payload[payloadSize] = isSolarChargingBattery() ? 1 : 0;
+    payloadSize++;  // Ahora tenemos 7 bytes totales
+
     // ==================== OBTENER DATOS PARA DISPLAY ====================
     float temperatura, humedad, presion, bateria;
     bool sensorOk = getSensorDataForDisplay(temperatura, humedad, presion, bateria);
@@ -230,8 +236,8 @@ void do_send(osjob_t *j)
         Serial.printf("Enviando: Temp=%.2f C, Hum=%.2f %%, Batt=%.2f V\n",
                      temperatura, humedad, bateria);
         #else
-        Serial.printf("Enviando: Temp=%.2f C, Hum=%.2f %%, Pres=%.2f hPa, Batt=%.2f V\n",
-                     temperatura, humedad, presion, bateria);
+        Serial.printf("Enviando: Temp=%.2f C, Hum=%.2f %%, Batt=%.2f V\n",
+                     temperatura, humedad, bateria);
         #endif
     } else {
         Serial.printf("Enviando datos limitados: Temp=ERROR, Hum=ERROR, Batt=%.2f V\n", bateria);
@@ -310,8 +316,8 @@ void onEvent (ev_t ev)
 
             Serial.printf("Esperando %d segundos antes del próximo intento de join\n", backoffSeconds);
 
-            // Si es un reintento rápido (primeros intentos), usar callback normal
-            if (backoffSeconds <= 60) {
+            // Si es un backoff moderado, usar callback normal
+            if (backoffSeconds <= 300) {
                 os_setTimedCallback(&sendjob, os_getTime() + sec2osticks(backoffSeconds), do_send);
             } else {
                 // Para backoffs largos, dormir ligero y luego reiniciar join

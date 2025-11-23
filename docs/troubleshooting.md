@@ -413,6 +413,142 @@ ACK recibido de gateway
 
 ---
 
+### 🐕 **7. Reinicio por Watchdog Timer**
+
+#### **Síntomas**
+```
+rst:0x8 (TG1WDT_SYS_RST),boot:0x8 (SPI_FAST_FLASH_BOOT)
+# Sistema se reinicia cada 5 minutos aproximadamente
+# Logs muestran "ESP-ROM:esp32s3-..." seguido de reinicio
+```
+
+#### **Diagnóstico Paso a Paso**
+1. **Confirmar reinicio por WDT**
+   ```cpp
+   // Agregar en setup() para detectar causa del reset
+   #include <esp_system.h>
+   
+   void setup() {
+       // ... código existente ...
+       
+       esp_reset_reason_t reset_reason = esp_reset_reason();
+       Serial.print("Reset reason: ");
+       switch(reset_reason) {
+           case ESP_RST_POWERON:   Serial.println("Power-on"); break;
+           case ESP_RST_SW:        Serial.println("Software"); break;
+           case ESP_RST_PANIC:     Serial.println("Panic (exception)"); break;
+           case ESP_RST_INT_WDT:   Serial.println("Interrupt WDT"); break;
+           case ESP_RST_TASK_WDT:  Serial.println("Task WDT"); break;  // ← Este es el WDT
+           case ESP_RST_WDT:       Serial.println("Other WDT"); break;
+           case ESP_RST_DEEPSLEEP: Serial.println("Deep sleep"); break;
+           default:                Serial.println("Unknown"); break;
+       }
+   }
+   ```
+
+2. **Verificar configuración del WDT**
+   ```cpp
+   // Verificar en main_otta.ino
+   esp_task_wdt_init(300, true);  // Debe ser 300 segundos
+   esp_task_wdt_add(NULL);        // Debe estar presente
+   ```
+
+3. **Verificar alimentación del WDT**
+   ```cpp
+   // Verificar en loop()
+   void loop() {
+       loopLMIC();
+       updateDisplay();
+       esp_task_wdt_reset();  // ← Debe estar presente y ejecutándose
+   }
+   ```
+
+4. **Analizar timing del loop**
+   ```cpp
+   // Agregar debug para timing
+   void loop() {
+       static uint32_t lastLoopTime = 0;
+       uint32_t currentTime = millis();
+       
+       if (currentTime - lastLoopTime > 10000) {  // Warning cada 10s
+           Serial.printf("Loop timing: %lu ms since last iteration\n", 
+                        currentTime - lastLoopTime);
+       }
+       
+       lastLoopTime = currentTime;
+       
+       loopLMIC();
+       updateDisplay();
+       esp_task_wdt_reset();
+   }
+   ```
+
+#### **Causas Comunes de Reinicio por WDT**
+- **Loop bloqueado**: Función `loopLMIC()` o `updateDisplay()` se cuelga
+- **Stack overflow**: Recursión infinita o variables locales excesivas
+- **Deadlock**: Espera infinita en funciones de LoRaWAN
+- **Infinite loop**: Bucle sin salida en código de manejo de eventos
+- **I2C/SPI hang**: Periférico I2C (sensor/display) deja de responder
+
+#### **Soluciones**
+- **Debug básico**: Agregar logs en puntos críticos del loop
+- **Timing check**: Verificar que el loop se ejecuta al menos cada 4 minutos
+- **Stack analysis**: Reducir variables locales grandes
+- **I2C timeout**: Agregar timeouts en comunicaciones I2C
+- **Exception handling**: Envolver código crítico en try-catch
+
+#### **Configuración de Debug para WDT**
+```cpp
+// Modo debug - reducir timeout para testing rápido
+#define WATCHDOG_DEBUG_MODE 1
+
+void setup() {
+    #if WATCHDOG_DEBUG_MODE
+        esp_task_wdt_init(30, true);  // 30 segundos para debug
+        Serial.println("WDT: Debug mode - 30s timeout");
+    #else
+        esp_task_wdt_init(300, true); // 5 minutos producción
+        Serial.println("WDT: Production mode - 5min timeout");
+    #endif
+    esp_task_wdt_add(NULL);
+}
+```
+
+#### **Test de WDT**
+```cpp
+// Función para testear WDT (usar con precaución)
+void testWatchdogTrigger() {
+    Serial.println("Testing WDT - system will reset in 5 minutes...");
+    Serial.println("Comment out esp_task_wdt_reset() in loop() to test");
+    
+    // El WDT se activará automáticamente si no se resetea
+    while(true) {
+        delay(10000);  // 10 segundos
+        Serial.printf("System still active at %lu ms\n", millis());
+        // esp_task_wdt_reset();  // Comentar para test
+    }
+}
+```
+
+#### **Prevención de Reinicios por WDT**
+- **Loop eficiente**: Mantener iteraciones del loop < 100ms
+- **Timeouts apropiados**: Todas las operaciones I2C/SPI con timeout
+- **Exception handling**: Capturar excepciones en código crítico
+- **Watchdog feeding**: `esp_task_wdt_reset()` al final del loop
+- **Debug logs**: Monitorear timing del sistema
+
+#### **¿Cuándo es Normal un Reinicio por WDT?**
+- **Durante desarrollo**: Frecuente mientras se debuggean cuelgues
+- **En producción**: Muy raro (< 1 vez por semana)
+- **Después de cambios**: Temporalmente más frecuente durante testing
+
+#### **¿Cuándo Investigar?**
+- **Reinicio diario**: Problema serio - revisar código de eventos
+- **Reinicio continuo**: Bug crítico - revisar stack usage
+- **Después de actualizaciones**: Verificar cambios en timing
+
+---
+
 ## 🛠️ Herramientas de Diagnóstico Avanzado
 
 ### 🔍 **Modo Debug Completo**
