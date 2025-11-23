@@ -36,6 +36,10 @@
 #include "sensor.h"         // Funciones del sensor
 #include "screen.h"         // Funciones de pantalla
 #include "solar.h"          // Funciones de carga solar
+#include <esp_task_wdt.h>   // Watchdog timer
+
+// Declaración forward
+void turnOffDisplay();
 
 // Objeto global del sensor BME280
 // Ahora definido en sensor.cpp
@@ -91,14 +95,12 @@ static bool inJoinBackoff = false;  // Si estamos en período de backoff
  * @return Tiempo en segundos para el próximo reintento
  */
 static int getJoinBackoffTime(int failCount) {
-    if (failCount <= 2) {
-        return 120;  // Esperar 2 minutos para dar tiempo al proceso de join LoRaWAN
-    } else if (failCount <= 5) {
-        return 300;  // Dormir 5 minutos
-    } else if (failCount <= 10) {
+    if (failCount <= 1) {
+        return 300;  // Esperar 5 minutos para dar más tiempo en zonas de poca cobertura
+    } else if (failCount <= 3) {
         return 600;  // Dormir 10 minutos
-    } else if (failCount <= 20) {
-        return 900;  // Dormir 15 minutos
+    } else if (failCount <= 5) {
+        return 1200;  // Dormir 20 minutos
     } else {
         return 1800;  // Dormir 30 minutos
     }
@@ -176,6 +178,9 @@ void os_getDevKey (u1_t *buf)
  */
 void do_send(osjob_t *j)
 {
+    // Resetear watchdog al inicio del envío
+    esp_task_wdt_reset();
+    
     // Verificar si estamos en período de backoff de join
     if (inJoinBackoff) {
         Serial.println(F("En período de backoff de join, esperando..."));
@@ -204,7 +209,7 @@ void do_send(osjob_t *j)
 
     if (payloadSize == 0) {
         Serial.println("Error al obtener payload del sensor");
-        sendErrorMessage("Error payload", 3000);
+        showError("Error payload", 3000);
         // Programar siguiente intento en 10 segundos
         os_setTimedCallback(&sendjob, os_getTime() + sec2osticks(10), do_send);
         return;
@@ -220,12 +225,12 @@ void do_send(osjob_t *j)
     bool sensorOk = getSensorDataForDisplay(temperatura, humedad, presion, bateria);
 
     // ==================== INTERFAZ DE USUARIO ====================
-    // Mostrar datos en pantalla OLED durante el envío
+    // Mostrar datos en pantalla OLED durante el envío (sin límite de tiempo)
     if (sensorOk) {
-        displaySensorData(temperatura, humedad, bateria, 5000);
+        showSensorData(temperatura, humedad, bateria, 0);  // 0 = mostrar hasta que llegue otro mensaje
     } else {
         // Mostrar solo batería cuando no hay sensor
-        sendWarningMessage("Solo bateria", 3000);
+        showWarning("Solo bateria", 0);  // 0 = mostrar hasta que llegue otro mensaje
     }
 
     // ==================== ENVÍO LoRaWAN ====================
@@ -260,6 +265,9 @@ void do_send(osjob_t *j)
  */
 void onEvent (ev_t ev)
 {
+    // Resetear watchdog para evitar reinicio durante operaciones LoRaWAN
+    esp_task_wdt_reset();
+    
     Serial.print(os_getTime());
     Serial.print(": ");
 
@@ -285,7 +293,7 @@ void onEvent (ev_t ev)
             }
 
             // Feedback visual de éxito
-            sendSuccessMessage("Datos enviados!", 2000);
+            showSuccess("Datos enviados!", 5000);
 
             // ==================== TRANSICIÓN A SUEÑO PROFUNDO ====================
             enterDeepSleep();
@@ -296,8 +304,8 @@ void onEvent (ev_t ev)
             lora_msg = "Uniéndose OTAA....";
             joinStatus = EV_JOINING;
 
-            // Mostrar estado en pantalla
-            sendInfoMessage("Uniéndose OTAA....", 0); // Mostrar hasta que se complete
+            // Mostrar estado en pantalla por 3 segundos
+            showInfo("uniendose OTAA", 3000);
             break;
 
         case EV_JOIN_FAILED:
@@ -312,7 +320,7 @@ void onEvent (ev_t ev)
             // Mostrar información del backoff en pantalla
             char backoffMsg[32];
             sprintf(backoffMsg, "Reintento en %d min", backoffSeconds / 60);
-            sendWarningMessage(backoffMsg, 3000);
+            showWarning(backoffMsg, 3000);
 
             Serial.printf("Esperando %d segundos antes del próximo intento de join\n", backoffSeconds);
 
@@ -341,10 +349,12 @@ void onEvent (ev_t ev)
             // Resetear contador de fallos al conectar exitosamente
             resetJoinFailCount();
 
-            // Celebrar éxito en pantalla
-            sendSuccessMessage("Unido a TTN!", 3000);
-            delay(2000);  // Mostrar por 2 segundos
-            turnOffDisplay();  // Apagar pantalla para ahorrar energía
+            // Mostrar mensaje de conexión exitosa durante 5 segundos
+            // La pantalla se apagará automáticamente al expirar el mensaje
+            showSuccess("connected", 5000);
+
+            // Programar el primer envío con delay para dar tiempo a ver el mensaje
+            os_setTimedCallback(&sendjob, os_getTime() + sec2osticks(6), do_send);
 
             // Deshabilitar link check para simplificar
             LMIC_setLinkCheckMode(0);
@@ -379,12 +389,14 @@ void onEvent (ev_t ev)
  */
 void enterDeepSleep() {
     Serial.println("Entrando en sueño profundo por " + String(SLEEP_TIME_SECONDS) + " segundos...");
-
     // Apagar pantalla para ahorrar energía
-    turnOffDisplay();
+    turnOffDisplayCompletely();
 
     // Configurar despertar por temporizador
     esp_sleep_enable_timer_wakeup(SLEEP_TIME_SECONDS * uS_TO_S_FACTOR);
+
+    // Apagar periféricos para ahorrar energía
+    disablePeripherals();
 
     // Entrar en sueño profundo (reinicio completo al despertar)
     esp_deep_sleep_start();
@@ -422,8 +434,10 @@ void setupLMIC(void)
     // Inicializar sensor BME280 en dirección I2C 0x76 (por defecto)
     if (!initSensor()) {
         Serial.println("ADVERTENCIA: Sensor no disponible, el dispositivo continuará funcionando y enviará datos de error");
-        sendWarningMessage("Sensor no disponible", 5000);
+        showWarning("Sensor no disponible", 5000);
         // No entramos en bucle infinito - el dispositivo debe continuar funcionando
+    } else {
+        showInfo("Sensor OK", 3000);
     }
 
     // ==================== CONFIGURACIÓN LoRaWAN ====================
@@ -451,15 +465,15 @@ void setupLMIC(void)
     // Configurar downlink RX2 con SF9 (estándar TTN)
     LMIC.dn2Dr = DR_SF9;
 
-    // Configurar spread factor y potencia de transmisión
-    LMIC_setDrTxpow(spreadFactor, 14);
+    // Configurar spread factor y potencia de transmisión (aumentada para mejor alcance)
+    LMIC_setDrTxpow(spreadFactor, 17);
 
     Serial.println("Iniciando proceso de join LoRaWAN...");
     // Iniciar el proceso de joining a la red
     LMIC_startJoining();
 
-    // Programar primer envío (también inicia join si no está hecho)
-    do_send(&sendjob);
+    // El envío se programará en EV_JOINED después de mostrar el mensaje de conexión
+    // do_send(&sendjob);
 }
 
 /**

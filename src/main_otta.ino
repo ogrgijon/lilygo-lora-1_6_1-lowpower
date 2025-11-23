@@ -50,7 +50,7 @@ void setup()
 
     // Inicializar sistema de pantalla
     initDisplay();
-    sendInfoMessage("Sistema Iniciado", 3000);
+    showInfo("Sistema Iniciado", 3000);
 }
 
 /**

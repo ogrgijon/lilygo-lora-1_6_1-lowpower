@@ -1,9 +1,9 @@
 /**
  * @file      screen.h
- * @brief     Cabeceras para el módulo de pantalla OLED
+ * @brief     Cabeceras para el módulo de pantalla OLED usando U8g2 (simplificado)
  *
  * @author    Proyecto IoT de Bajo Consumo
- * @version   1.0
+ * @version   1.1
  * @date      2025
  */
 
@@ -21,68 +21,59 @@ enum ScreenMessageType {
     MSG_STATUS          // Estado del sistema
 };
 
-// Estructura para mensajes de pantalla
-struct ScreenMessage {
-    ScreenMessageType type;
-    String text;
-    uint32_t duration;      // Duración en milisegundos (0 = mostrar hasta que llegue otro mensaje)
-    uint32_t timestamp;     // Cuando se creó el mensaje
-    bool displayed;         // Si ya se mostró
-};
-
 /**
- * @brief Inicializa la pantalla OLED
+ * @brief Inicializa la pantalla OLED U8g2
  *
  * @return true si la inicialización es exitosa, false en caso contrario
  */
 bool initDisplay();
 
 /**
- * @brief Actualiza y gestiona la pantalla (llamar en loop principal)
- * Maneja la cola de mensajes y controla cuándo mostrar/ocultar información
+ * @brief Actualiza la pantalla (llamar en loop principal)
+ * Maneja el tiempo de visualización de mensajes
  */
 void updateDisplay();
 
 /**
- * @brief Envía un mensaje a la pantalla con duración específica
+ * @brief Muestra un mensaje en la pantalla con duración específica
  *
  * @param type Tipo de mensaje
  * @param text Texto del mensaje
  * @param duration Duración en milisegundos (0 = mostrar hasta que llegue otro mensaje)
  */
-void sendScreenMessage(ScreenMessageType type, const String& text, uint32_t duration = 3000);
+void showMessage(ScreenMessageType type, const String& text, uint32_t duration = 3000);
 
 /**
- * @brief Envía un mensaje de información
+ * @brief Muestra un mensaje de información
  *
  * @param text Texto del mensaje
  * @param duration Duración en milisegundos (por defecto 3000ms)
  */
-void sendInfoMessage(const String& text, uint32_t duration = 3000);
+void showInfo(const String& text, uint32_t duration = 3000);
 
 /**
- * @brief Envía un mensaje de advertencia
+ * @brief Muestra un mensaje de advertencia
  *
  * @param text Texto del mensaje
  * @param duration Duración en milisegundos (por defecto 4000ms)
  */
-void sendWarningMessage(const String& text, uint32_t duration = 4000);
+void showWarning(const String& text, uint32_t duration = 4000);
 
 /**
- * @brief Envía un mensaje de error
+ * @brief Muestra un mensaje de error
  *
  * @param text Texto del mensaje
  * @param duration Duración en milisegundos (por defecto 5000ms)
  */
-void sendErrorMessage(const String& text, uint32_t duration = 5000);
+void showError(const String& text, uint32_t duration = 5000);
 
 /**
- * @brief Envía un mensaje de éxito
+ * @brief Muestra un mensaje de éxito
  *
  * @param text Texto del mensaje
  * @param duration Duración en milisegundos (por defecto 2000ms)
  */
-void sendSuccessMessage(const String& text, uint32_t duration = 2000);
+void showSuccess(const String& text, uint32_t duration = 2000);
 
 /**
  * @brief Muestra datos del sensor en la pantalla
@@ -92,26 +83,19 @@ void sendSuccessMessage(const String& text, uint32_t duration = 2000);
  * @param battery Voltaje de batería en V
  * @param duration Duración en milisegundos (por defecto 5000ms)
  */
-void displaySensorData(float temp, float hum, float battery, uint32_t duration = 5000);
+void showSensorData(float temp, float hum, float battery, uint32_t duration = 5000);
 
 /**
- * @brief Fuerza la actualización inmediata de la pantalla
+ * @brief Limpia la pantalla
  */
-void forceDisplayUpdate();
+void clearDisplay();
 
 /**
- * @brief Limpia todos los mensajes pendientes
+ * @brief Apaga completamente la pantalla para deep sleep (sin indicadores)
  */
-void clearScreenMessages();
+void turnOffDisplayCompletely();
 
 /**
- * @brief Obtiene el número de mensajes en cola
- *
- * @return Número de mensajes pendientes
+ * @brief Enciende la pantalla si está apagada
  */
-int getPendingMessageCount();
-
-/**
- * @brief Apaga la pantalla para ahorrar energía
- */
-void turnOffDisplay();
+void turnOnDisplay();

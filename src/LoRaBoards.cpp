@@ -402,6 +402,8 @@ void disablePeripherals()
         PMU->disableIRQ(XPOWERS_AXP2101_ALL_IRQ);
         // Clear the PMU interrupt status before sleeping, otherwise the sleep current will increase
         PMU->clearIrqStatus();
+        // OLED VDD
+        PMU->disablePowerOutput(XPOWERS_DCDC1);
         // GNSS RTC Power , Turning off GPS backup voltage and current can further reduce ~ 100 uA
         PMU->disablePowerOutput(XPOWERS_VBACKUP);
         // LoRa VDD
@@ -419,6 +421,11 @@ void disablePeripherals()
         PMU->disablePowerOutput(XPOWERS_DCDC5);
 #endif
 
+        // Additional disables for maximum power saving
+        PMU->disablePowerOutput(XPOWERS_ALDO1);
+        PMU->disablePowerOutput(XPOWERS_BLDO1);
+        PMU->disablePowerOutput(XPOWERS_BLDO2);
+
     } else if (PMU->getChipModel() == XPOWERS_AXP192) {
 
         // Disable all PMU interrupts
@@ -429,6 +436,8 @@ void disablePeripherals()
         PMU->disablePowerOutput(XPOWERS_LDO2);
         // GNSS VDD
         PMU->disablePowerOutput(XPOWERS_LDO3);
+        // OLED VDD
+        PMU->disablePowerOutput(XPOWERS_DCDC1);
 
 
     }
@@ -501,11 +510,14 @@ void loopPMU(void (*pressed_cb)(void))
  */
 bool beginDisplay()
 {
+    Serial.println("DEBUG: beginDisplay starting");
     Wire.beginTransmission(DISPLAY_ADDR);
     if (Wire.endTransmission() == 0) {
         Serial.printf("Find Display model at 0x%X address\n", DISPLAY_ADDR);
         u8g2 = new DISPLAY_MODEL(U8G2_R0, U8X8_PIN_NONE);
+        Serial.println("DEBUG: u8g2 object created");
         u8g2->begin();
+        Serial.println("DEBUG: u8g2->begin() called");
         u8g2->clearBuffer();
 
         // ===== CONFIGURACIÓN DEL LOGO DE INICIO =====
@@ -534,6 +546,7 @@ bool beginDisplay()
         // u8g2->clearBuffer();
         // u8g2->sendBuffer();
 
+        Serial.println("DEBUG: beginDisplay successful");
         return true;
     }
 
@@ -918,9 +931,14 @@ void setupBoards(bool disable_u8g2 )
     beginSDCard();
 
 #ifdef HAS_DISPLAY
+    Serial.println("DEBUG: Calling beginDisplay");
     beginDisplay();
+    Serial.println("DEBUG: beginDisplay completed");
     if (u8g2) {
+        Serial.println("DEBUG: Turning off display for power saving");
         u8g2->setPowerSave(1);  // Apagar display inmediatamente para ahorro de energía
+    } else {
+        Serial.println("DEBUG: u8g2 is null, cannot turn off display");
     }
 #endif
 
