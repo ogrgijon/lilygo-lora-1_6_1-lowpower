@@ -1,397 +1,418 @@
-# 🌡️ Sistema IoT LoRaWAN Modular - Sensor Ambiental Inteligente
----
-> ### 🎓 Proyecto Académico - Sin Ánimo de Lucro
-> Este proyecto ha sido desarrollado para apoyar a los investigadores y prototipos del Medialab de la Universidad de Oviedo.  
-> Todo el código, documentación y diseños están disponibles gratuitamente para fines educativos y de investigación.
+# 🌡️ Sistema IoT LoRaWAN Multisensor - Bajo Consumo
+
+**Nodo sensor ambiental inteligente para ESP32 LilyGo T3 v1.6.1 con LoRaWAN**
+
+[![PlatformIO](https://img.shields.io/badge/PlatformIO-3776AB?logo=platformio)](https://platformio.org/)
+[![ESP32](https://img.shields.io/badge/ESP32-000000?logo=espressif)](https://www.espressif.com/)
+[![LoRaWAN](https://img.shields.io/badge/LoRaWAN-EU868-FF6B35)](https://lora-alliance.org/)
+[![TTN](https://img.shields.io/badge/The%20Things%20Network-000000)](https://www.thethingsnetwork.org/)
 
 ---
 
-> ### 🆕 ¿Nuevo en IoT y LoRaWAN?
-> Consulta la guía de introducción:  
-> [docs/inicio.md](docs/inicio.md)  
-> Aprende desde cero sobre la tecnología, conceptos básicos y primeros pasos.
+## 🎯 ¿Qué es este proyecto?
+
+Un **sistema IoT completo y modular** que combina:
+- **ESP32 LilyGo T3 v1.6.1** con ultra bajo consumo
+- **LoRaWAN** para comunicación de largo alcance
+- **Múltiples sensores ambientales** configurables (DHT22, BMP280, etc.)
+- **Gestión avanzada de energía** con batería y carga solar
+- **Integración completa** con The Things Network (TTN)
+
+### ✨ Características principales
+- 🔋 **Ultra bajo consumo**: Hasta 136 días de autonomía con batería 3000mAh
+- 🔧 **Completamente modular**: Habilita/deshabilita sensores individualmente
+- 📡 **LoRaWAN nativo**: Integración directa con TTN usando OTAA
+- ☀️ **Carga solar**: Energía renovable integrada con panel solar
+- 📊 **Payload dinámico**: Se adapta automáticamente según sensores activos
+- 🖥️ **Display OLED**: Interfaz visual con feedback contextual
 
 ---
 
-> ### ⚠️ Responsabilidad y Normativa
-> Antes de desplegar el sistema, consulta el documento:  
-> [docs/responsabilidad.md](docs/responsabilidad.md)  
-> Uso responsable y ético.  
-> **Importante:** Infórmate sobre la normativa vigente del espectro radioeléctrico en tu país para operar dispositivos LoRaWAN legalmente.
+## 🚀 Inicio Rápido (5 minutos)
+
+### 1. **Instala el entorno**
+```bash
+# Clona el proyecto
+git clone <tu-repo>
+cd low-power-project
+
+# Abre en VS Code con PlatformIO
+code .
+```
+
+### 2. **Configura tus sensores** (`config/config.h`)
+```cpp
+// DESCOMENTA los sensores que quieres usar
+#define ENABLE_SENSOR_DHT22      // Temperatura + Humedad
+#define ENABLE_SENSOR_BMP280     // Presión atmosférica
+//#define ENABLE_SENSOR_DS18B20    // Temperatura adicional
+//#define ENABLE_SENSOR_HCSR04     // Sensor de distancia
+```
+
+### 3. **Configura credenciales LoRaWAN** (`lorawan_config.h`)
+```cpp
+static const u1_t PROGMEM APPEUI[8] = {/* tus valores de TTN */};
+static const u1_t PROGMEM DEVEUI[8] = {/* tus valores de TTN */};
+static const u1_t PROGMEM APPKEY[16] = {/* tus valores de TTN */};
+```
+
+### 4. **Compila y sube**
+```bash
+pio run --target upload --upload-port COM3
+```
+
+### 5. **¡Listo!** Ve tus datos en TTN Console
 
 ---
 
-[![PlatformIO](https://img.shields.io/badge/PlatformIO-6.1.11-blue.svg)](https://platformio.org)
-[![ESP32](https://img.shields.io/badge/ESP32-240MHz-green.svg)](https://www.espressif.com/en/products/socs/esp32)
-[![LoRaWAN](https://img.shields.io/badge/LoRaWAN-1.0.3-orange.svg)](https://lora-alliance.org)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+## 📚 Documentación
 
-**Sistema IoT completo con arquitectura modular** para monitoreo ambiental remoto. Implementa medición precisa de temperatura, humedad, presión atmosférica y voltaje de batería, transmitiendo datos por LoRaWAN cada 60 segundos con **consumo ultra-bajo** (Hasta < 20μA en deep sleep).
+| Documento | Contenido | Tiempo |
+|-----------|-----------|--------|
+| [**📖 Guía de Uso**](docs/uso.md) | Configuración completa paso a paso | 20 min |
+| [**🏛️ Arquitectura**](docs/arquitectura.md) | Diseño técnico del sistema | 15 min |
+| [**🔧 Troubleshooting**](docs/troubleshooting.md) | Solución de problemas comunes | 15 min |
+| [**⚙️ Desarrollo**](docs/desarrollo.md) | Modificar y extender el código | 30 min |
+| [**📡 Configuración TTN**](docs/configuracion_ttn.md) | Setup completo en TTN | 10 min |
 
-## 🎯 Características Principales
+---
 
-### 🌡️ **Sensores Ambientales Avanzados**
-- **BME280**: Temperatura (-40°C a +85°C), humedad (0-100%), presión (300-1100 hPa)
-- **Precisión**: 0.01 unidades para todas las lecturas
-- **Recuperación automática**: Sistema continúa funcionando aunque falle el sensor
+### 📊 Configuraciones de Ejemplo
 
-### 📡 **Comunicación LoRaWAN Robusta**
-- **Clase A**: Bajo consumo con bidireccionalidad
-- **OTAA Join**: Activación segura sobre el aire
-- **Adaptive Rate**: Spreading Factor 7-12 según condiciones
-- **Región EU868**: Optimizado para Europa 868MHz
+### 🌡️ **Monitoreo Ambiental Básico**
+```cpp
+#define ENABLE_SENSOR_DHT22      // Temperatura + Humedad
+#define SEND_INTERVAL_SECONDS 300 // Cada 5 minutos
+```
+**Autonomía**: ~70 días | **Payload**: 7 bytes | **Campos**: Temp, Hum, Batt, Solar
 
-### 🔋 **Gestión de Energía Inteligente**
-- **Deep Sleep**: 60 segundos entre ciclos - por defecto -
-- **Monitoreo batería**: Voltaje en tiempo real
-- **Auto-apagado**: Componentes se desactivan automáticamente
-- **Eficiencia**: < 0.5mAh por ciclo (autonomía ~4 días)
+### 🏭 **Estación Meteorológica Completa**
+```cpp
+#define ENABLE_SENSOR_DHT22      // Temp + Humedad
+#define ENABLE_SENSOR_BMP280     // Presión atmosférica
+#define SEND_INTERVAL_SECONDS 600 // Cada 10 minutos
+```
+**Autonomía**: ~62 días | **Payload**: 9 bytes | **Campos**: Temp, Hum, Pres, Batt, Solar
 
-### 🔋 **Ejemplos de Autonomía según Tiempo de Deep Sleep**
+### 🔋 **Solo Monitoreo de Batería**
+```cpp
+// Todos los sensores comentados
+#define ENABLE_SENSOR_NONE       // Solo batería y estado solar
+#define SEND_INTERVAL_SECONDS 1800 // Cada 30 minutos
+```
+**Autonomía**: ~136 días | **Payload**: 4 bytes | **Campos**: Batt, Solar
 
-Suponiendo una batería LiPo 18650 de **3000mAh** y siendo conservadores con la media de estimación de consumo:
+---
 
-| Deep Sleep (segundos) | Ciclos/día | Consumo diario | Autonomía teórica (3000mAh) |
-|----------------------|------------|---------------|-----------------------------|
-| **60**               | 1440       | 216mAh        | ~14 días                    |
-| **120**              | 720        | 108mAh        | ~28 días                    |
-| **300**              | 288        | 43mAh         | ~70 días                    |
-| **600**              | 144        | 22mAh         | ~136 días                   |
+## 📡 Decoder TTN Automático
 
-> **Ejemplo con placa solar:**  
-Para operación continua, una placa solar debe suministrar al menos el consumo diario.  
-- **Consumo típico:** 216mAh/día × 3.7V ≈ **0.8Wh/día**  
-- **Placa recomendada:** 1W (5V, 200mA) con 1-2h de sol directo cubre la demanda y recarga la batería.
+El sistema genera automáticamente el decoder JavaScript según tus sensores configurados.
 
-> **Nota:** La autonomía real depende de la calidad de la batería, condiciones ambientales y eficiencia de carga solar.
+Para obtener el decoder personalizado:
+1. Habilita `SHOW_TTN_DECODER true` en `config/config.h`
+2. Compila y sube el código
+3. Abre Serial Monitor (115200 baud)
+4. Copia el código JavaScript generado
+5. Pégalo en TTN Console → Payload formatters → Uplink
 
-| Deep Sleep (segundos) | Ciclos/día | Consumo diario | Autonomía teórica (3000mAh) |
-|----------------------|------------|---------------|-----------------------------|
-| **60**               | 1440       | 216mAh        | ~14 días                    |
-| **120**              | 720        | 108mAh        | ~28 días                    |
-| **300**              | 288        | 43mAh         | ~70 días                    |
-| **600**              | 144        | 22mAh         | ~136 días                   |
+### 🔧 Decodificador Universal
 
-> **Nota:** La autonomía real puede variar según condiciones ambientales, calidad de la batería y consumo adicional por transmisión o display.
+```javascript
+function decodeUplink(input) {
+  var bytes = input.bytes;
+  var data = {};
+  var offset = 0;
 
-### 🖥️ **Interfaz de Usuario Avanzada**
-- **OLED SSD1306**: Display inteligente con cola de mensajes
-- **Estados visuales**: Join, transmisión, errores, datos ambientales
-- **Auto-gestión**: Se apaga automáticamente para ahorro de energía
+  // Determinar qué campos están presentes por el tamaño del payload
+  var payloadSize = bytes.length;
 
-### 🏗️ **Arquitectura Modular**
-- **Separación clara**: Sensor, LoRaWAN, Display, Hardware
-- **APIs definidas**: Interfaces limpias entre módulos
-- **Mantenibilidad**: Código organizado y documentado
-- **Extensibilidad**: Fácil agregar nuevos sensores o funcionalidades
+  // Temperatura (siempre presente en configuraciones con sensores de temp)
+  if (payloadSize >= 7) {
+    data.temperature = ((bytes[offset++] << 8) | bytes[offset++]) / 100.0;
+  }
 
-## 📊 Datos Transmitidos
+  // Humedad (si payload >= 7 y hay sensores de humedad)
+  if (payloadSize >= 7 && (payloadSize === 7 || payloadSize >= 9)) {
+    data.humidity = ((bytes[offset++] << 8) | bytes[offset++]) / 100.0;
+  }
 
-### 📦 **Payload de 8 Bytes (Big-Endian)**
+  // Presión (si payload >= 9)
+  if (payloadSize >= 9) {
+    data.pressure = ((bytes[offset++] << 8) | bytes[offset++]) / 10.0;
+  }
 
-| Campo | Bytes | Tipo | Rango | Precisión | Ejemplo |
-|-------|-------|------|-------|-----------|---------|
-| **Temperatura** | 0-1 | int16_t | -40°C a 85°C | 0.01°C | `25.67°C` |
-| **Humedad** | 2-3 | uint16_t | 0-100% | 0.01% | `65.43%` |
-| **Presión** | 4-5 | uint16_t | 300-1100 hPa | 0.01 hPa | `1013.25 hPa` |
-| **Batería** | 6-7 | uint16_t | 0-5V | 0.01V | `3.85V` |
+  // Batería (siempre presente, últimos 2 bytes)
+  data.battery_voltage = ((bytes[offset++] << 8) | bytes[offset++]) / 100.0;
 
-### 🔍 **Códigos de Error**
-- **Temperatura**: `-999.0°C` (sensor fallando)
-- **Humedad**: `-1.0%` (sensor fallando)
-- **Presión**: `-1.0 hPa` (sensor fallando)
-- **Batería**: Siempre disponible
+  // Estado solar (siempre presente, último byte)
+  data.solar_charging = bytes[offset] === 1;
+  data.energy_source = data.solar_charging ? "Solar + Battery" : "Battery Only";
 
-## 🚀 Inicio Rápido
+  return { data: data, warnings: [], errors: [] };
+}
+```
 
-### 📋 **Prerrequisitos**
-- LilyGo T3 con ESP32
-- VS Code + PlatformIO
-- Cuenta The Things Network (TTN)
-- Antena LoRa 868MHz
+### 📊 Ejemplos de Payload
 
-### ⚡ **Configuración en 5 Minutos**
+| Configuración | Payload (hex) | Datos Decodificados |
+|---------------|---------------|-------------------|
+| **Solo batería** | `0DAC 01` | `{"battery_voltage": 3.85, "solar_charging": true}` |
+| **DHT22** | `01F4 0FA0 0DAC 01` | `{"temperature": 25.00, "humidity": 65.20, "battery_voltage": 3.85, "solar_charging": true}` |
+| **DHT22 + BMP280** | `01F4 0FA0 2328 0DAC 01` | `{"temperature": 25.00, "humidity": 65.20, "pressure": 1013.2, "battery_voltage": 3.85, "solar_charging": true}` |
 
-1. **Clonar y abrir**
-   ```bash
-   git clone <tu-repo>
-   cd low-power-project
-   code .
-   ```
+---
 
-2. **Configurar credenciales TTN**
-   ```bash
-   # Copiar plantilla de configuración
-   cp include/lorawan_config_template.h include/lorawan_config.h
-   
-   # Editar con tus claves TTN
-   # include/lorawan_config.h
-   static const u1_t PROGMEM APPEUI[8] = {TU_APPEUI_AQUI};
-   static const u1_t PROGMEM DEVEUI[8] = {TU_DEVEUI_AQUI};
-   static const u1_t PROGMEM APPKEY[16] = {TU_APPKEY_AQUI};
-   ```
+## 🔋 Eficiencia Energética
 
-3. **Compilar y subir**
-   ```bash
-   pio run --target upload --upload-port COM3
-   ```
+### ⚡ Consumo por Configuración (Batería 3000mAh)
 
-4. **Verificar funcionamiento**
-   - OLED muestra "Sistema Iniciado"
-   - Serial: logs de join y transmisión
-   - TTN: datos ambientales cada 60s
+| Configuración | Intervalo | Consumo/ciclo | Autonomía | Payload |
+|---------------|-----------|---------------|-----------|---------|
+| **Solo batería** | 30 min | 0.015mAh | 136 días | 4 bytes |
+| **DHT22 básico** | 5 min | 0.03mAh | 70 días | 7 bytes |
+| **DHT22 + BMP280** | 10 min | 0.04mAh | 62 días | 9 bytes |
+| **Máx. sensores** | 10 min | 0.08mAh | 26 días | 9 bytes |
+
+### 💡 Ciclo de Operación Típico
+
+```
+┌─────────────────┐    ┌──────────────────┐    ┌──────────────┐
+│   Deep Sleep    │ -> │ Procesamiento +  │ -> │   TX LoRa    │
+│   (20μA, 60s)   │    │   Sensores       │    │   (120mA)    │
+│                 │    │   (25mA, 8s)     │    │   (2s)       │
+└─────────────────┘    └──────────────────┘    └──────────────┘
+         │                        │                       │
+         └─ Consumo promedio: ────┴────── 0.5mAh/día ────┘
+```
+
+### ☀️ Optimizaciones con Carga Solar
+
+| Condiciones | Panel Solar | Consumo Neto | Autonomía |
+|-------------|-------------|--------------|-----------|
+| **Sin sol** | 0W | +0.5mAh/día | 70 días |
+| **Sol parcial** | 1W (4h/día) | -0.2mAh/día | Ilimitada |
+| **Sol completo** | 2W (8h/día) | -2.0mAh/día | Ilimitada |
+
+### 🔌 Estados de Energía
+
+- **🔋 Solo Batería**: Consumo continuo de batería
+- **☀️ Carga Solar**: Batería se carga cuando hay sol disponible
+- **🔋 + ☀️ Híbrido**: Batería + carga solar simultánea
+- **⚡ Energía Ilimitada**: Con panel solar adecuado
+
+---
 
 ## 📁 Estructura del Proyecto
 
 ```
 low-power-project/
-├── 📁 src/
-│   ├── main.cpp               # 🚀 Entry point Arduino (renombrado)
-│   ├── pgm_board.cpp          # 📡 Núcleo LoRaWAN
-│   ├── sensor.cpp             # 🌡️ Gestión sensores BME280
-│   ├── screen.cpp             # 🖥️ Sistema display OLED
-│   ├── LoRaBoards.cpp         # 🔧 Abstracción hardware LilyGo
-│   ├── LoRaBoards.h           # 🔧 Headers hardware
-│   └── utilities.h            # 📋 Utilidades comunes
-├── 📁 include/
-│   ├── sensor.h               # 📋 API sensores
-│   ├── screen.h               # 📋 API display
-│   ├── LoRaBoards.h           # 📋 API hardware LilyGo
-│   ├── loramac.h              # 📋 Headers LoRaWAN
-│   ├── lorawan_config.h       # 🔐 Claves LoRaWAN (ignoradas por git)
-│   ├── lorawan_config_template.h # 📋 Plantilla de configuración segura
-│   └── utilities.h            # 📋 Utilidades comunes
-├── 📁 lib/
-│   ├── Adafruit_BME280_Library/  # 🌡️ Librería sensor BME280
-│   ├── Adafruit_BusIO/        # 🔧 Bus I2C/SPI Adafruit
-│   ├── Adafruit_Sensor/       # 📊 Framework sensores Adafruit
-│   ├── LMIC-Arduino/          # 📡 Stack LoRaWAN
-│   ├── U8g2/                  # 🖥️ Librería display OLED
-│   └── XPowersLib/            # 🔋 Gestión PMU AXP192
-├── 📁 docs/
-│   ├── README.md              # 📖 Documentación completa
-│   ├── inicio.md              # 🚀 Guía para principiantes
-│   ├── instalacion.md         # 🚀 Guía de instalación
-│   ├── uso.md                 # 📖 Manual de operación
-│   ├── arquitectura.md        # 🏗️ Diseño del sistema
-│   ├── codigo.md              # 📝 Estructura del código
-│   ├── software.md            # 💻 Configuración técnica
-│   ├── hardware.md            # 🔧 Especificaciones hardware
-│   ├── libreriasyterceros.md  # 📋 Librerías y licencias
-│   └── troubleshooting.md     # 🔧 Solución de problemas
-├── platformio.ini             # ⚙️ Configuración PlatformIO
-└── README.md                  # 📋 Este archivo
+├── 📁 config/                    # ⚙️ Configuración del sistema
+│   ├── config.h                  # Configuración principal
+│   ├── hardware_config.h         # Configuración hardware
+│   ├── lorawan_config.h          # Credenciales LoRaWAN
+│   ├── lorawan_config_template.h # Plantilla configuración TTN
+│   └── sensor/                   # Configuraciones específicas de sensores
+│       ├── sensor_bmp280.h       # Config BMP280
+│       ├── sensor_dht11.h        # Config DHT11
+│       ├── sensor_dht22.h        # Config DHT22
+│       ├── sensor_ds18b20.h      # Config DS18B20
+│       ├── sensor_hcsr04.h       # Config HC-SR04
+│       ├── sensor_none.h         # Config sin sensores
+│       └── sensor_template.h     # Plantilla para nuevos sensores
+├── 📁 src/                       # 📄 Código fuente principal
+│   ├── main_otta.ino             # 🚀 Punto de entrada principal
+│   ├── LoRaBoards.cpp/.h         # 📡 Configuración hardware LoRa
+│   ├── pgm_board.cpp             # 🔧 Gestión LoRaWAN y OTAA
+│   ├── sensor.cpp                # 🌡️ Lógica multisensor
+│   ├── screen.cpp                # 🖥️ Gestión display OLED
+│   └── utilities.h               # 🛠️ Utilidades comunes
+├── 📁 include/                   # 📋 Headers y librerías
+│   ├── LoRaBoards.h              # Headers hardware LoRa
+│   ├── loramac.h                 # Headers LoRaWAN
+│   └── utilities.h               # Headers utilidades
+├── 📁 docs/                      # 📚 Documentación completa
+│   ├── arquitectura.md           # 🏗️ Arquitectura del sistema
+│   ├── configuracion_ttn.md      # 📡 Setup TTN
+│   ├── desarrollo.md             # 🔧 Guía de desarrollo
+│   ├── guiadeinicio.md           # 🚀 Guía de inicio rápido
+│   ├── hardware.md               # 🔧 Especificaciones hardware
+│   ├── responsabilidad.md        # ⚖️ Responsabilidades del proyecto
+│   ├── troubleshooting.md        # 🛠️ Solución de problemas
+│   ├── ttn_decoder.md            # 📊 Decodificadores TTN
+│   ├── uso.md                    # 📖 Guía de uso detallada
+│   └── lilygo-ttgo-t3-lora32-868mhz-v1.6.1.jpg # Imagen hardware
+├── platformio.ini                # ⚙️ Configuración PlatformIO
+├── README.md                     # 📄 Este archivo
+└── .gitignore                    # 🚫 Archivos ignorados por Git
 ```
 
-## 🔧 Configuración Técnica
+## 🛠️ Desarrollo
 
-### 📡 **Parámetros LoRaWAN**
+### 📦 Dependencias PlatformIO
+
+```ini
+[env:esp32dev]
+platform = espressif32
+board = esp32dev
+framework = arduino
+lib_deps =
+    DHT sensor library for ESPx
+    Adafruit BMP280 Library
+    DallasTemperature
+    OneWire
+    U8g2
+    MCCI LoRaWAN LMIC library
+    XPowersLib
+```
+
+### 🧪 Testing y Debug
+
+```bash
+# Compilar proyecto
+pio run
+
+# Subir a la placa
+pio run --target upload --upload-port COM3
+
+# Monitor serial
+pio device monitor
+
+# Limpiar y reconstruir
+pio run --target clean && pio run
+```
+
+### 🔍 Debug Avanzado
+
 ```cpp
-#define CFG_eu868 1                    // Región Europa
-#define CLASS A                        // Clase bajo consumo
-#define TX_INTERVAL 30                 // Intervalo transmisión (no usado)
-#define SINGLE_CHANNEL_GATEWAY 0       // Multi-canal producción
+// En config/config.h
+#define ENABLE_SERIAL_LOGS true
+#define LOG_LEVEL 2              // 0: ninguno, 1: básico, 2: detallado
+#define SHOW_TTN_DECODER true    // Genera decoder TTN automáticamente
 ```
-
-### 🌡️ **Configuración Sensor BME280**
-```cpp
-// Modos de operación
-#define BME280_MODE_FORCED              // Bajo consumo
-
-// Sobremuestreo para precisión
-#define BME280_TEMPERATURE_OSR BME280_OSR_X2
-#define BME280_HUMIDITY_OSR BME280_OSR_X1
-#define BME280_PRESSURE_OSR BME280_OSR_X1
-
-// Dirección I2C
-bool sensorOk = bme.begin(0x76);        // Default
-if (!sensorOk) sensorOk = bme.begin(0x77); // Fallback
-```
-
-### 🔋 **Gestión de Energía**
-```cpp
-#define SLEEP_TIME_SECONDS 60          // Ciclo de 60 segundos
-#define BATTERY_LOW_VOLTAGE 3.0f       // Umbral batería baja
-#define BATTERY_FULL_VOLTAGE 4.2f      // Batería cargada
-```
-
-### 🖥️ **Sistema Display**
-```cpp
-#define MAX_SCREEN_MESSAGES 10         // Cola de mensajes
-#define OLED_ADDRESS 0x3C              // Dirección I2C
-#define OLED_CONTRAST 255              // Máximo contraste
-```
-
-## 📚 Documentación Completa
-
-### 📖 **Guías de Usuario**
-- **[Inicio](docs/inicio.md)**: Guía para principiantes - IoT, LoRa, TTN, ESP32
-- **[Instalación](docs/instalacion.md)**: Setup completo desde cero
-- **[Uso](docs/uso.md)**: Operación y configuración avanzada
-- **[Troubleshooting](docs/troubleshooting.md)**: Diagnóstico y solución de problemas
-
-### 🏗️ **Documentación Técnica**
-- **[Arquitectura](docs/arquitectura.md)**: Diseño modular del sistema
-- **[Código](docs/codigo.md)**: Estructura y flujos de ejecución
-- **[Software](docs/software.md)**: Dependencias y configuración
-- **[Hardware](docs/hardware.md)**: Especificaciones técnicas
-- **[Librerías de Terceros](docs/libreriasyterceros.md)**: Propietarios, licencias y derechos
-
-## 🔗 Integración TTN
-
-### 📊 **Decoder JavaScript**
-```javascript
-function decodeUplink(input) {
-  var bytes = input.bytes;
-  return {
-    data: {
-      temperature: ((bytes[0] << 8) | bytes[1]) / 100.0,
-      humidity: ((bytes[2] << 8) | bytes[3]) / 100.0,
-      pressure: ((bytes[4] << 8) | bytes[5]) / 100.0,
-      battery_voltage: ((bytes[6] << 8) | bytes[7]) / 100.0
-    }
-  };
-}
-```
-
-### 📈 **Dashboard TTN**
-- Temperatura, humedad, presión en gráficos
-- Voltaje de batería con alertas
-- RSSI/SNR para calidad de enlace
-- Historial de transmisiones
-
-## ⚡ Rendimiento y Eficiencia
-
-### 📊 **Métricas de Consumo**
-| Modo | Consumo | Duración | Energía |
-|------|---------|----------|---------|
-| **Activo** | 120mA | 1-2s | ~0.07mAh |
-| **Idle** | 25mA | 8s | ~0.06mAh |
-| **Display ON** | 25mA | 5s | ~0.03mAh |
-| **Deep Sleep** | 20μA | 60s | ~0.0003mAh |
-| **Total/ciclo** | - | 60s | **~0.15mAh** |
-
-### 🔋 **Cálculo de Autonomía**
-```
-Batería LiPo 18650 (3000mAh):
-- Consumo promedio: 0.15mAh/ciclo
-- Ciclos/día: 1440 (24h ÷ 60s)
-- Consumo diario: 216mAh
-- Autonomía teórica: ~14 días
-- Autonomía real: ~10-12 días (factor de seguridad)
-```
-
-### 📡 **Características de Enlace**
-- **Alcance**: Hasta 10-20km (línea de vista)
-- **Penetración**: Buena en entornos urbanos
-- **Fiabilidad**: ACK automático en cada transmisión
-- **Latencia**: 1-2 segundos por uplink
-
-## 🛠️ Desarrollo y Testing
-
-### 🧪 **Suite de Tests**
-```cpp
-// Test completo del sistema
-void runSystemTest() {
-    testHardwareInit();
-    testSensorReadings();
-    testLoRaWANJoin();
-    testDataTransmission();
-    testDeepSleep();
-}
-```
-
-### 📊 **Monitoreo de Debug**
-```cpp
-// Logs detallados en modo debug
-#define DEBUG_MODE 1
-// Incluye métricas de:
-// - Tiempos de ejecución
-// - Estados LoRaWAN
-// - Lecturas de sensores
-// - Consumo de memoria
-```
-
-### 🔧 **Herramientas de Desarrollo**
-- **PlatformIO**: Compilación y upload
-- **Serial Monitor**: Debugging en tiempo real
-- **TTN Console**: Monitoreo de red LoRaWAN
-- **Osciloscopio**: Análisis de consumo de energía
-
-## 🚀 Casos de Uso
-
-### 🌆 **Monitoreo Ambiental Urbano**
-- Control de calidad del aire en ciudades
-- Monitoreo de temperatura en infraestructuras
-- Alertas de contaminación ambiental
-
-### 🏭 **Industria y Agricultura**
-- Monitoreo de condiciones en invernaderos
-- Control de temperatura en cadenas de frío
-- Vigilancia de equipos industriales
-
-### 🏠 **Domótica e IoT**
-- Sensores ambientales en hogares inteligentes
-- Monitoreo de humedad en prevención de moho
-- Control climático automático
-
-### 🔬 **Investigación y Educación**
-- Estaciones meteorológicas remotas
-- Proyectos estudiantiles IoT
-- Investigación ambiental
-
-## 🤝 Contribución
-
-### 📋 **Proceso de Contribución**
-1. Fork el proyecto
-2. Crear rama feature (`git checkout -b feature/nueva-funcionalidad`)
-3. Commit cambios (`git commit -m 'Agrega nueva funcionalidad'`)
-4. Push a rama (`git push origin feature/nueva-funcionalidad`)
-5. Abrir Pull Request
-
-### 🐛 **Reportar Issues**
-- Usar template de issue proporcionado
-- Incluir logs completos del Serial Monitor
-- Especificar versión de PlatformIO y librerías
-- Describir pasos para reproducir el problema
-
-### 📝 **Guías de Código**
-- **Estilo**: camelCase para variables, snake_case para constantes
-- **Comentarios**: Doxygen format para documentación
-- **Commits**: Mensajes descriptivos en inglés
-- **Testing**: Validar cambios antes de commit
-
-## 📄 Licencia
-
-Este proyecto está bajo la **Licencia MIT**. Ver archivo `LICENSE` para más detalles.
-
-```
-MIT License - Copyright (c) 2025
-
-Se concede permiso para usar, copiar, modificar y distribuir
-este software con las condiciones especificadas en la licencia.
-```
-
-## 🙏 Agradecimientos
-
-- **LilyGo**: Por el hardware T3-S3 de calidad
-- **The Things Network**: Por la infraestructura LoRaWAN
-- **IBM**: Por la librería LMIC
-- **Adafruit**: Por las librerías de sensores
-- **Comunidad ESP32**: Por el soporte y documentación
-
-## 📞 Soporte
-
-### 📧 **Canales de Soporte**
-- **Issues**: Para bugs y feature requests
-- **Discussions**: Para preguntas generales
-- **Wiki**: Documentación detallada
-
-### 🔗 **Recursos Adicionales**
-- [TTN Documentation](https://www.thethingsnetwork.org/docs/)
-- [ESP32 Technical Reference](https://www.espressif.com/sites/default/files/documentation/esp32-s3_technical_reference_manual_en.pdf)
-- [LoRaWAN Specification](https://lora-alliance.org/resource_hub/lorawan-specification-v1-0-3/)
 
 ---
 
-**🌟 Sistema IoT LoRaWAN modular, eficiente y listo para producción**
+## 📈 Dashboard TTN
+
+### Visualización de Datos
+```
+🌡️ Temperatura: 23.45°C
+💧 Humedad: 65.30%
+🌪️ Presión: 1013.25 hPa
+🔋 Batería: 3.85V (85%)
+☀️ Solar: Cargando
+📡 RSSI: -95dBm, SNR: 8.5dB
+```
+
+### JSON Decodificado
+```json
+{
+  "temperature": 23.45,
+  "humidity": 65.30,
+  "pressure": 1013.25,
+  "battery_voltage": 3.85,
+  "solar_charging": true
+}
+```
+
+---
+
+## 🔧 Desarrollo y Extensiones
+
+### 🤓 **Para Estudiantes**
+Este proyecto es perfecto para aprender:
+- **IoT desde cero**: Conceptos básicos hasta implementación
+- **ESP32**: Programación embebida en C++
+- **LoRaWAN**: Redes de largo alcance
+- **Sensores**: Interfaces I2C, OneWire, GPIO
+- **Energía**: Gestión de consumo y carga solar
+
+### 🚀 **Agregar Nuevo Sensor**
+```cpp
+// 1. Define en config.h
+#define ENABLE_SENSOR_MI_SENSOR
+
+// 2. Implementa sensor_mi_sensor.cpp
+bool sensor_mi_sensor_read_all(sensor_data_t* data) {
+    data->mi_variable = leer_sensor();
+    data->battery = readBatteryVoltage();
+    return true;
+}
+
+// 3. ¡Listo! El sistema lo detecta automáticamente
+```
+
+---
+
+## 📞 Soporte
+
+### 🆘 **¿Problemas?**
+1. **Lee primero**: [Guía de troubleshooting](docs/troubleshooting.md)
+2. **Configuración**: [Guía de uso](docs/uso.md)
+3. **TTN Setup**: [Configuración TTN](docs/configuracion_ttn.md)
+
+### 🐛 **Reportar Bugs**
+```markdown
+**Entorno:**
+- Hardware: LilyGo T3 v1.6.1
+- Sensores activos: DHT22, BMP280
+- TTN Region: EU868
+
+**Síntomas:**
+- Descripción del problema
+- Logs del Serial Monitor
+- Estado en TTN Console
+```
+
+---
+
+## 🛠️ Hardware Requerido
+
+### 📋 Lista de Componentes
+
+| Componente | Especificación | Notas |
+|------------|----------------|-------|
+| **Placa principal** | LilyGo T3 v1.6.1 | ESP32 + LoRa SX1276 + PMU AXP2101 |
+| **Antena** | 868MHz LoRaWAN | Incluida con la placa |
+| **Batería** | LiPo 3.7V 3000mAh | Recomendado para máxima autonomía |
+| **Panel solar** | 5V USB-C | Opcional, carga automática |
+| **Sensores** | Según configuración | DHT22, BMP280, DS18B20, HC-SR04 |
+
+### 🔌 Conexiones de Sensores
+
+| Sensor | Pines ESP32 | Alimentación | Notas |
+|--------|-------------|--------------|-------|
+| **DHT22** | GPIO 13 (DATA), GPIO 12 (POWER) | 3.3V | Control individual de alimentación |
+| **BMP280** | I2C: GPIO 17 (SDA), 18 (SCL) | 3.3V | Dirección I2C: 0x76 o 0x77 |
+| **DS18B20** | GPIO 14 (OneWire) | 3.3V | Requiere resistor pull-up 4.7KΩ |
+| **HC-SR04** | GPIO 25 (TRIG), 26 (ECHO) | 5V | Desde PMU AXP2101 |
+| **OLED SSD1306** | I2C: GPIO 17 (SDA), 18 (SCL) | 3.3V | Dirección I2C: 0x3C |
+
+### ⚡ Diagrama de Conexiones
+
+```
+ESP32 LilyGo T3 v1.6.1
+├── 🔌 USB-C (Programación + Carga Solar)
+├── 📡 Antena LoRa 868MHz
+├── 🔋 Batería LiPo 3.7V
+├── 🌡️ DHT22 (GPIO 13/12)
+├── 🌪️ BMP280 (I2C GPIO 17/18)
+├── 🌡️ DS18B20 (GPIO 14)
+├── 📏 HC-SR04 (GPIO 25/26)
+└── 🖥️ OLED (I2C GPIO 17/18)
+```
+
+---
+
+## 📄 Licencia
+
+**MIT License** - Libre para uso educativo
+
+---
+
+**¡Bienvenido al mundo del IoT con LoRaWAN!** 🌟
+
+*[Empieza aquí](docs/uso.md)* | *[Arquitectura técnica](docs/arquitectura.md)* | *[Solución de problemas](docs/troubleshooting.md)*
+
+---
+**📅 Actualizado: Noviembre 2024** | **🔧 LilyGo T3 v1.6.1** | **📡 LoRaWAN EU868**

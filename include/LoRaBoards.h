@@ -11,6 +11,7 @@
 
 
 #include "utilities.h"
+#include "../config/hardware_config.h"
 
 #ifdef HAS_SDCARD
 #include <SD.h>

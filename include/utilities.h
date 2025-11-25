@@ -8,7 +8,7 @@
  */
 #pragma once
 
-#define DHT_PIN 16  // Pin for AM2302 sensor
+#define DHT_PIN 13  // Pin for AM2302 sensor (corrected to match sensor config)
 
 
 // Support board list , Macro definition below, select the board definition to be used
@@ -18,14 +18,13 @@
 
 // 1. --------------T3 V1.3 -------------------------------
 // https://lilygo.cc/products/lora-v1-3
-//#define T3_V1_3_SX1278
-#define T3_V1_3_SX1276
+// #define T3_V1_3_SX1278
+// #define T3_V1_3_SX1276  // Uncommented to fix board configuration
 // #define T3_V1_3_SX1278
 
 // 2. --------------T3 V1.6.1 -------------------------------
 // https://lilygo.cc/products/lora3
-
-// #define T3_V1_6_SX1276
+#define T3_V1_6_SX1276
 // #define T3_V1_6_SX1278
 
 // 3. --------------T3 V3.0 TCXO-------------------------------
@@ -193,7 +192,7 @@
 #define HAS_PMU
 #define PMU_IRQ                     35
 #define PMU_WIRE_PORT               Wire
-#define BOARD_VARIANT_NAME          "T3 V1.3"
+// BOARD_VARIANT_NAME defined in hardware_config.h
 
 #define DISPLAY_MODEL_SSD_LIB       SSD1306Wire
 #define DISPLAY_MODEL               U8G2_SSD1306_128X64_NONAME_F_HW_I2C
@@ -245,7 +244,7 @@
 #define HAS_SDCARD
 #define HAS_DISPLAY
 
-#define BOARD_VARIANT_NAME          "T3 V1.6"
+// BOARD_VARIANT_NAME defined in hardware_config.h
 #define DISPLAY_MODEL_SSD_LIB       SSD1306Wire
 #define DISPLAY_MODEL               U8G2_SSD1306_128X64_NONAME_F_HW_I2C
 #define BAT_ADC_PULLUP_RES          (100000.0)

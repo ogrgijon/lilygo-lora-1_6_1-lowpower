@@ -4,6 +4,12 @@
 
 El sistema implementa una arquitectura modular altamente desacoplada, diseñada para máxima robustez, mantenibilidad y eficiencia energética. Cada módulo tiene responsabilidades claras y bien definidas, permitiendo desarrollo independiente y testing aislado.
 
+**Características principales:**
+- **Sistema multisensor configurable**: Soporte para múltiples sensores ambientales (temperatura, humedad, presión, distancia) con activación condicional
+- **Payload dinámico**: Tamaño y contenido del payload se adapta automáticamente según los sensores activos
+- **Compilación condicional**: Solo se incluye el código de los sensores habilitados, optimizando el uso de recursos
+- **Gestión energética avanzada**: Deep sleep de 60 segundos con consumo ultra-bajo (~20μA)
+
 ## 🧩 Arquitectura Modular
 
 ```mermaid
@@ -20,9 +26,13 @@ graph TB
         EVENTS[Manejo de eventos<br/>ACK, errores]
     end
 
-    subgraph "🌡️ Módulo Sensor"
-        BME280[sensor.cpp<br/>BME280 + batería]
-        PAYLOAD[Creación payload<br/>8 bytes binario]
+    subgraph "🌡️ Módulo Sensor Multisensor"
+        CONFIG[Configuración<br/>ENABLE_SENSOR_*]
+        DHT[sensor_dht.cpp<br/>DHT22/DHT11]
+        DS[sensor_ds18b20.cpp<br/>DS18B20]
+        BMP[sensor_bmp280.cpp<br/>BMP280]
+        HC[sensor_hcsr04.cpp<br/>HC-SR04]
+        PAYLOAD[Creación payload<br/>Dinámico 4-16 bytes]
         VALIDATION[Validación de datos<br/>Manejo de errores]
         RETRY[Reintentos<br/>Recuperación]
     end
@@ -45,19 +55,24 @@ graph TB
     LOOP --> LMIC
     LOOP --> OLED
 
-    LMIC --> BME280
-    LMIC --> EVENTS
-    LMIC --> TX
-
-    TX --> PAYLOAD
-    PAYLOAD --> BME280
+    LMIC --> CONFIG
+    CONFIG --> DHT
+    CONFIG --> DS
+    CONFIG --> BMP
+    CONFIG --> HC
+    DHT --> PAYLOAD
+    DS --> PAYLOAD
+    BMP --> PAYLOAD
+    HC --> PAYLOAD
+    PAYLOAD --> VALIDATION
+    VALIDATION --> RETRY
 
     LMIC --> OLED
-    BME280 --> OLED
+    PAYLOAD --> OLED
 
     BOARD --> PMU
     BOARD --> PINS
-    BME280 --> BOARD
+    PAYLOAD --> BOARD
     OLED --> BOARD
 ```
 
@@ -108,34 +123,65 @@ stateDiagram-v2
     Deep_Sleep --> Medición
 ```
 
-### 🌡️ **Módulo Sensor (`sensor.cpp`)**
+### 🌡️ **Módulo Sensor Multisensor**
 **Responsabilidades:**
-- Gestión completa del sensor BME280
-- Medición de parámetros ambientales
-- Medición de voltaje de batería
-- Validación de datos y manejo de errores
-- Creación del payload binario
+- Gestión configurable de múltiples sensores ambientales
+- Compilación condicional basada en defines ENABLE_SENSOR_*
+- Creación dinámica de payloads según sensores activos
+- Medición de voltaje de batería (siempre disponible)
+- Validación de datos y manejo de errores por sensor
+
+**Sensores soportados:**
+- **DHT22/DHT11**: Temperatura y humedad ambiente
+- **DS18B20**: Temperatura de precisión
+- **BMP280**: Presión atmosférica y temperatura
+- **HC-SR04**: Medición de distancia por ultrasonido
 
 **Funciones clave:**
-- `initSensor()`: Inicialización BME280
-- `getSensorPayload()`: Creación payload 8 bytes
-- `getSensorDataForDisplay()`: Datos para UI
-- `isSensorAvailable()`: Estado del sensor
+- `initSensors()`: Inicialización condicional de sensores activos
+- `getSensorPayload()`: Creación payload dinámico (4-16 bytes)
+- `getSensorDataForDisplay()`: Datos formateados para UI
+- `isSensorAvailable()`: Estado de disponibilidad por sensor
+
+**Sistema de configuración:**
+```cpp
+// En config/config.h
+#define ENABLE_SENSOR_DHT22     // Activa sensor DHT22
+#define ENABLE_SENSOR_DS18B20   // Activa sensor DS18B20
+#define ENABLE_SENSOR_BMP280    // Activa sensor BMP280
+#define ENABLE_SENSOR_HCSR04    // Activa sensor HC-SR04
+
+// Cálculo dinámico del tamaño del payload
+#define PAYLOAD_SIZE_DHT        4   // Temp + Hum (2 bytes cada uno)
+#define PAYLOAD_SIZE_DS18B20    2   // Temp (2 bytes)
+#define PAYLOAD_SIZE_BMP280     6   // Temp + Pres (2+4 bytes)
+#define PAYLOAD_SIZE_HCSR04     2   // Distancia (2 bytes)
+#define PAYLOAD_SIZE_BATTERY    2   // Voltaje batería (siempre incluido)
+```
 
 **Diagrama de flujo:**
 ```mermaid
 flowchart TD
-    A[Inicio] --> B{¿Sensor OK?}
-    B -->|Sí| C[Leer BME280]
-    B -->|No| D[Marcar error]
-    C --> E{¿Lectura válida?}
-    E -->|Sí| F[Datos OK]
-    E -->|No| D
-    D --> G[Usar códigos de error]
-    F --> H[Leer batería]
-    G --> H
-    H --> I[Crear payload 8 bytes]
-    I --> J[Retornar datos]
+    A[Inicio] --> B[Verificar ENABLE_SENSOR_*]
+    B --> C{¿DHT activo?}
+    C -->|Sí| D[Init DHT]
+    C -->|No| E{¿DS18B20 activo?}
+    D --> E
+    E -->|Sí| F[Init DS18B20]
+    E -->|No| G{¿BMP280 activo?}
+    F --> G
+    G -->|Sí| H[Init BMP280]
+    G -->|No| I{¿HC-SR04 activo?}
+    H --> I
+    I -->|Sí| J[Init HC-SR04]
+    I -->|No| K[Medir batería]
+    
+    K --> L[Construir payload dinámico]
+    L --> M[Validar datos]
+    M --> N{¿Datos válidos?}
+    N -->|Sí| O[Retornar payload]
+    N -->|No| P[Usar códigos de error]
+    P --> O
 ```
 
 ### 🖥️ **Módulo Display (`screen.cpp`)**
@@ -188,10 +234,10 @@ sequenceDiagram
 
     Main->>LoRaWAN: do_send()
     LoRaWAN->>Sensor: getSensorPayload()
-    Sensor->>Sensor: Leer BME280 + batería
-    Sensor-->>LoRaWAN: Payload 8 bytes
+    Sensor->>Sensor: Medir sensores activos + batería
+    Sensor-->>LoRaWAN: Payload dinámico (4-16 bytes)
     LoRaWAN->>Sensor: getSensorDataForDisplay()
-    Sensor-->>LoRaWAN: Datos formateados
+    Sensor-->>LoRaWAN: Datos formateados multisensor
     LoRaWAN->>Display: displaySensorData()
     Display-->>Display: Mostrar en OLED
     LoRaWAN->>LoRaWAN: LMIC_setTxData2()
@@ -222,11 +268,13 @@ stateDiagram-v2
 
 ## 🛡️ Manejo de Errores y Robustez
 
-### 🌡️ **Estrategias de Recuperación del Sensor**
-- **Inicialización fallida**: Continúa sin sensor, envía códigos de error
-- **Lectura inválida**: Reintenta automáticamente, usa valores de error
-- **Sensor desconectado**: Sistema completo sigue funcionando
-- **Batería siempre disponible**: Medición independiente del sensor BME280
+### 🌡️ **Estrategias de Recuperación Multisensor**
+- **Inicialización condicional**: Solo se inicializan sensores con ENABLE_SENSOR_* definido
+- **Graceful degradation**: Si un sensor falla, los demás continúan funcionando
+- **Lectura inválida**: Reintenta automáticamente, usa valores de error por sensor
+- **Sensor desconectado**: Sistema completo sigue funcionando con sensores disponibles
+- **Batería siempre disponible**: Medición independiente de los sensores ambientales
+- **Payload dinámico**: Tamaño se adapta automáticamente según sensores funcionales
 
 ### 📡 **Robustez LoRaWAN**
 - **Join fallido**: Reintentos automáticos con backoff
@@ -250,11 +298,11 @@ stateDiagram-v2
 | **Promedio** | 0.5mA | 60s | 100% |
 
 ### 💾 **Uso de Recursos**
-| Recurso | Uso Actual | Disponible | % Usado |
-|---------|------------|------------|---------|
-| **Flash** | 366KB | 1310KB | 28% |
-| **RAM** | 25KB | 320KB | 7.8% |
-| **CPU** | Pico 240MHz | 240MHz | Variable |
+| Recurso | Uso Base | Con sensores completos | Disponible | % Usado |
+|---------|----------|----------------------|------------|---------|
+| **Flash** | 320KB | 420KB | 1310KB | 25-32% |
+| **RAM** | 22KB | 28KB | 320KB | 7-9% |
+| **CPU** | Pico 240MHz | 240MHz | 240MHz | Variable |
 
 ### 📡 **Rendimiento LoRaWAN**
 | Parámetro | Valor | Notas |
@@ -268,8 +316,10 @@ stateDiagram-v2
 ## 🔧 Patrones de Diseño Implementados
 
 ### 🏭 **Factory Pattern**
-- Creación centralizada de payloads en `sensor.cpp`
-- Abstracción de diferentes tipos de sensor
+- Creación dinámica de payloads en módulos sensor individuales
+- Abstracción de diferentes tipos de sensor con interfaces consistentes
+- Compilación condicional para incluir solo código de sensores activos
+- Payload builder que concatena datos de sensores habilitados
 
 ### 🎯 **Observer Pattern**
 - Callbacks LoRaWAN (`onEvent`) para eventos asíncronos
@@ -300,4 +350,4 @@ stateDiagram-v2
 
 ---
 
-**🏗️ Arquitectura modular para máxima robustez y mantenibilidad**
+**🏗️ Arquitectura modular multisensor para máxima robustez y mantenibilidad**

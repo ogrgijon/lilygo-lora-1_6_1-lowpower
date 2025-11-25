@@ -48,10 +48,8 @@ DISPLAY_MODEL *u8g2 = NULL;
 static DevInfo_t  devInfo;
 
 #ifdef HAS_PMU
-#ifdef HAS_PMU
 XPowersLibInterface *PMU = NULL;
 bool pmuInterrupt;
-#endif
 #endif
 
 #ifdef HAS_GPS
@@ -71,10 +69,6 @@ static void enable_slow_clock();
  * @brief Función de callback para manejar interrupciones del PMU.
  *        Establece una bandera cuando ocurre una interrupción del PMU.
  */
-
-XPowersLibInterface *PMU = NULL;
-#ifdef HAS_PMU
-bool pmuInterrupt;
 
 static void setPmuFlag()
 {
@@ -402,6 +396,8 @@ void disablePeripherals()
         PMU->disableIRQ(XPOWERS_AXP2101_ALL_IRQ);
         // Clear the PMU interrupt status before sleeping, otherwise the sleep current will increase
         PMU->clearIrqStatus();
+        // OLED VDD
+        PMU->disablePowerOutput(XPOWERS_DCDC1);
         // GNSS RTC Power , Turning off GPS backup voltage and current can further reduce ~ 100 uA
         PMU->disablePowerOutput(XPOWERS_VBACKUP);
         // LoRa VDD
@@ -419,6 +415,11 @@ void disablePeripherals()
         PMU->disablePowerOutput(XPOWERS_DCDC5);
 #endif
 
+        // Additional disables for maximum power saving
+        PMU->disablePowerOutput(XPOWERS_ALDO1);
+        PMU->disablePowerOutput(XPOWERS_BLDO1);
+        PMU->disablePowerOutput(XPOWERS_BLDO2);
+
     } else if (PMU->getChipModel() == XPOWERS_AXP192) {
 
         // Disable all PMU interrupts
@@ -429,6 +430,8 @@ void disablePeripherals()
         PMU->disablePowerOutput(XPOWERS_LDO2);
         // GNSS VDD
         PMU->disablePowerOutput(XPOWERS_LDO3);
+        // OLED VDD
+        PMU->disablePowerOutput(XPOWERS_DCDC1);
 
 
     }
@@ -489,7 +492,6 @@ void loopPMU(void (*pressed_cb)(void))
     // Clear PMU Interrupt Status Register
     PMU->clearIrqStatus();
 }
-#endif // HAS_PMU
 
 #ifdef DISPLAY_MODEL
 /**
@@ -534,6 +536,7 @@ bool beginDisplay()
         // u8g2->clearBuffer();
         // u8g2->sendBuffer();
 
+        Serial.println("DEBUG: beginDisplay successful");
         return true;
     }
 
@@ -864,7 +867,7 @@ void setupBoards(bool disable_u8g2 )
 #endif
 
     pinMode(BOARD_LED, OUTPUT);
-    digitalWrite(BOARD_LED, LED_ON);
+    digitalWrite(BOARD_LED, !LED_ON); // Apagar LED al iniciar
 #endif
 
 
@@ -970,8 +973,15 @@ void setupBoards(bool disable_u8g2 )
 #ifdef BOARD_LED
     digitalWrite(BOARD_LED, LED_ON);
     delay(100);
-    digitalWrite(BOARD_LED, !LED_ON);
+    digitalWrite(BOARD_LED, !LED_ON);  // Apagar LED después del parpadeo
+    Serial.println("DEBUG: BOARD_LED turned OFF after setup");
 #endif
+
+    // Asegurar que el LED de carga del PMU esté apagado
+    if (PMU) {
+        PMU->setChargingLedMode(XPOWERS_CHG_LED_OFF);
+        Serial.println("DEBUG: PMU charging LED turned OFF");
+    }
 }
 
 
@@ -1060,7 +1070,8 @@ void flashLed()
         if (ledState) {
             digitalWrite(BOARD_LED, LED_ON);
         } else {
-            digitalWrite(BOARD_LED, !LED_ON);
+            digitalWrite(BOARD_LED, !LED_ON);  // Apagar LED después del parpadeo
+            Serial.println("DEBUG: BOARD_LED turned OFF after setup");
         }
         lastDebounceTime = millis();
     }
@@ -1089,11 +1100,6 @@ void scanDevices(TwoWire *w)
         if (err == 0) {
             nDevices++;
             switch (addr) {
-            case 0x77:
-            case 0x76:
-                Serial.println("\tFind AM2302 Sensor!");
-                deviceOnline |= AM2302_ONLINE;
-                break;
             case 0x34:
                 Serial.println("\tFind AXP192/AXP2101 PMU!");
                 deviceOnline |= POWERMANAGE_ONLINE;
@@ -1525,10 +1531,19 @@ float readBatteryVoltage() {
 #ifdef HAS_PMU
     if (PMU) {
         float v = PMU->getBattVoltage() / 1000.0f;
+        Serial.printf("DEBUG: PMU battery voltage raw: %d mV, converted: %.3f V\n", PMU->getBattVoltage(), v);
         // Protección: solo valores razonables
-        if (v > 2.5f && v < 4.5f) return v;
+        if (v > 2.5f && v < 4.5f) {
+            Serial.printf("DEBUG: Using PMU voltage: %.3f V\n", v);
+            return v;
+        } else {
+            Serial.printf("DEBUG: PMU voltage %.3f V out of range, trying ADC\n", v);
+        }
+    } else {
+        Serial.println("DEBUG: PMU not available");
     }
 #endif
+
 #ifdef ADC_PIN
     // Leer ADC y calcular voltaje usando divisor resistivo
     uint16_t raw = analogRead(ADC_PIN);
@@ -1540,9 +1555,20 @@ float readBatteryVoltage() {
     float v_bat = v_adc * ((r1 + r2) / r2);
     // Compensación opcional
     v_bat += BAT_VOL_COMPENSATION;
+
+    Serial.printf("DEBUG: ADC raw: %d, v_adc: %.3f V, r1: %.0f, r2: %.0f, v_bat: %.3f V\n",
+                  raw, v_adc, r1, r2, v_bat);
+
     // Protección: solo valores razonables
-    if (v_bat > 2.5f && v_bat < 4.5f) return v_bat;
+    if (v_bat > 2.5f && v_bat < 4.5f) {
+        Serial.printf("DEBUG: Using ADC voltage: %.3f V\n", v_bat);
+        return v_bat;
+    } else {
+        Serial.printf("DEBUG: ADC voltage %.3f V out of range\n", v_bat);
+    }
 #endif
+
+    Serial.println("DEBUG: All voltage readings failed, returning 0.0V");
     // Si todo falla, devuelve 0.0V
     return 0.0f;
 }

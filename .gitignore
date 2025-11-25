@@ -6,4 +6,4 @@
 .vscode/ipch
 
 # LoRaWAN configuration with sensitive keys
-include/lorawan_config.h
+config/lorawan_config.h

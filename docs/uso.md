@@ -1,331 +1,203 @@
-# 📖 Guía de Uso - Sistema IoT LoRaWAN Modular
+# 📖 Guía de Uso - Sistema Multisensor LoRaWAN
 
-## 🎯 Resumen Ejecutivo
+## 🎯 Sistema Multisensor Configurable
 
-Este sistema IoT implementa un **nodo sensor ambiental inteligente** con arquitectura modular que mide temperatura, humedad, presión atmosférica y voltaje de batería, transmitiendo datos por LoRaWAN cada 60 segundos. Diseñado para **máxima eficiencia energética** con deep sleep y gestión inteligente de componentes.
+Este sistema IoT implementa un **nodo sensor ambiental inteligente y configurable** que puede medir temperatura, humedad, presión atmosférica y voltaje de batería. El sistema permite **habilitar/deshabilita sensores individualmente** para adaptarse a diferentes necesidades.
 
 ## 🚀 Inicio Rápido
 
 ### 📋 Prerrequisitos
-- **Hardware**: LilyGo T3-S3 con LoRa SX1262
+- **Hardware**: LilyGo T3 v1.6.1 con LoRa SX1276
 - **Software**: PlatformIO + VS Code
-- **Cuenta**: The Things Network (TTN) o similar
-- **Entorno**: Windows/Linux/Mac con USB
+- **Cuenta**: The Things Network (TTN)
+- **Sensores**: Según configuración deseada
 
 ### ⚡ Configuración en 5 Minutos
 
-#### 1. **Clonar y Abrir Proyecto**
-```bash
-git clone <tu-repo>
-cd low-power-project
-code .
+#### 1. **Configurar Sensores** (`config/config.h`)
+```cpp
+// DESCOMENTA los sensores que quieres usar
+#define ENABLE_SENSOR_DHT22      // DHT22 (Temperatura + Humedad)
+#define ENABLE_SENSOR_BMP280     // BMP280 (Presión + Temperatura)
+//#define ENABLE_SENSOR_DS18B20    // DS18B20 (Temperatura OneWire)
+//#define ENABLE_SENSOR_HCSR04     // HC-SR04 (Distancia ultrasónica)
 ```
 
 #### 2. **Configurar Credenciales LoRaWAN**
-Editar `src/pgm_board.cpp`:
+Editar `lorawan_config.h` con tus credenciales TTN:
 ```cpp
-// Reemplazar con tus credenciales TTN
-static const u1_t PROGMEM APPEUI[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-static const u1_t PROGMEM DEVEUI[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-static const u1_t PROGMEM APPKEY[16] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                                        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+static const u1_t PROGMEM APPEUI[8] = {/* tus valores */};
+static const u1_t PROGMEM DEVEUI[8] = {/* tus valores */};
+static const u1_t PROGMEM APPKEY[16] = {/* tus valores */};
 ```
 
 #### 3. **Compilar y Subir**
 ```bash
-# En VS Code con PlatformIO
-Ctrl+Shift+P → "PlatformIO: Upload"
+pio run --target upload
 ```
 
-#### 4. **Verificar Funcionamiento**
-- **LED azul**: Parpadea durante inicialización
-- **OLED**: Muestra "Sistema Iniciado" → "Uniéndose OTAA..." → datos ambientales
-- **Serial Monitor**: Logs detallados del proceso
+## 📊 Configuraciones de Ejemplo
 
-## 📊 Datos Transmitidos
-
-### 📦 Formato del Payload (8 bytes)
-
-| Bytes | Campo | Tipo | Rango | Precisión | Ejemplo |
-|-------|-------|------|-------|-----------|---------|
-| 0-1 | Temperatura | int16_t | -40°C a 85°C | 0.01°C | `25.67°C` → `0x0A 0x1B` |
-| 2-3 | Humedad | uint16_t | 0-100% | 0.01% | `65.43%` → `0x19 0x2B` |
-| 4-5 | Presión | uint16_t | 300-1100 hPa | 0.01 hPa | `1013.25 hPa` → `0x27 0x89` |
-| 6-7 | Batería | uint16_t | 0-5V | 0.01V | `3.85V` → `0x0F 0x11` |
-
-### 🔍 Códigos de Error
-- **Temperatura**: `-999.0°C` (sensor fallando)
-- **Humedad**: `-1.0%` (sensor fallando)
-- **Presión**: `-1.0 hPa` (sensor fallando)
-- **Batería**: Siempre disponible (0-5V)
-
-## 🖥️ Interfaz de Usuario (OLED)
-
-### 📱 Estados del Display
-
-#### 🔄 **Secuencia Normal**
-```
-Sistema Iniciado
-    ↓ (3s)
-Uniéndose OTAA.... (persistente)
-    ↓ (join exitoso)
-Unido a TTN!
-    ↓ (2s)
-[Display OFF - ahorro energía]
-    ↓ (cada 60s)
-T: 25.67°C
-H: 65.43%
-P:1013.25hPa
-B: 3.85V
-    ↓ (5s)
-[Display OFF]
-```
-
-#### ⚠️ **Estados de Error**
-```
-[ERROR]
-Sensor no disponible
-    ↓ (3s)
-Solo bateria
-B: 3.85V
-```
-
-#### ✅ **Confirmaciones**
-```
-[OK]
-Datos enviados!
-    ↓ (2s)
-[Display OFF]
-```
-
-### 🎨 **Sistema de Mensajes**
-- **Cola inteligente**: Hasta 10 mensajes pendientes
-- **Auto-apagado**: Display se apaga automáticamente
-- **Priorización**: Mensajes nuevos desplazan antiguos
-- **Temporización**: Cada mensaje tiene duración configurable
-
-## 🔧 Operación Avanzada
-
-### 📡 Configuración LoRaWAN
-
-#### **Parámetros TTN**
+### Configuración Básica (DHT22)
 ```cpp
-// Frecuencia (Europa 868MHz)
-#define CFG_eu868 1
-
-// Clase dispositivo (A = bajo consumo)
-#define CLASS A
-
-// Canal único (opcional para testing)
-#define SINGLE_CHANNEL_GATEWAY 0
+#define ENABLE_SENSOR_DHT22      // Solo temperatura + humedad
+// Otros sensores comentados
 ```
+**Payload**: 7 bytes (Temp, Humedad, Batería, Estado Solar)
 
-#### **Tiempos de Transmisión**
-- **Intervalo**: 60 segundos (configurable)
-- **Timeout ACK**: 2 segundos
-- **Reintento join**: 10 segundos tras fallo
-- **Deep sleep**: 60 segundos entre ciclos
-
-### 🌡️ Gestión de Sensores
-
-#### **BME280 - Inicialización Robusta**
+### Configuración Completa
 ```cpp
-// Dirección I2C: 0x76 (por defecto) o 0x77
-bool sensorOk = bme.begin(0x76);
-if (!sensorOk) {
-    Serial.println("Sensor BME280 no encontrado");
-    // Sistema continúa con códigos de error
+#define ENABLE_SENSOR_DHT22      // Temp + Humedad
+#define ENABLE_SENSOR_BMP280     // Presión atmosférica
+```
+**Payload**: 9 bytes (Temp, Humedad, Presión, Batería, Estado Solar)
+
+### Solo Batería
+```cpp
+// Todos los sensores comentados
+#define ENABLE_SENSOR_NONE       // Solo monitoreo de batería
+```
+**Payload**: 4 bytes (Batería, Estado Solar)
+
+## 📦 Formato del Payload Dinámico
+
+El payload se adapta automáticamente según los sensores activos:
+
+| Sensores Activos | Campos | Tamaño | Ejemplo |
+|------------------|--------|--------|---------|
+| DHT22 | Temp, Hum, Batt, Solar | 7 bytes | `01F4 0FA0 0DAC 01` |
+| DHT22 + BMP280 | Temp, Hum, Pres, Batt, Solar | 9 bytes | `01F4 0FA0 2328 0DAC 01` |
+| Todos | Temp, Hum, Pres, Batt, Solar | 9 bytes | `01F4 0FA0 2328 0DAC 01` |
+
+### 🔧 Decodificador TTN Universal
+
+```javascript
+function decodeUplink(input) {
+  var bytes = input.bytes;
+  var data = {};
+  var offset = 0;
+
+  // Determinar qué campos están presentes por el tamaño del payload
+  var payloadSize = bytes.length;
+
+  // Temperatura (siempre presente en configuraciones con sensores de temp)
+  if (payloadSize >= 7) {
+    data.temperature = ((bytes[offset++] << 8) | bytes[offset++]) / 100.0;
+  }
+
+  // Humedad (si payload >= 7 y hay sensores de humedad)
+  if (payloadSize >= 7 && (payloadSize === 7 || payloadSize >= 9)) {
+    data.humidity = ((bytes[offset++] << 8) | bytes[offset++]) / 100.0;
+  }
+
+  // Presión (si payload >= 9)
+  if (payloadSize >= 9) {
+    data.pressure = ((bytes[offset++] << 8) | bytes[offset++]) / 10.0;
+  }
+
+  // Batería (siempre presente, últimos 2 bytes)
+  data.battery_voltage = ((bytes[offset++] << 8) | bytes[offset++]) / 100.0;
+
+  // Estado solar (siempre presente, último byte)
+  data.solar_charging = bytes[offset] === 1;
+  data.energy_source = data.solar_charging ? "Solar + Battery" : "Battery Only";
+
+  return { data: data, warnings: [], errors: [] };
 }
 ```
 
-#### **Lecturas Ambientales**
-- **Temperatura**: Compensada, rango -40°C a +85°C
-- **Humedad**: Compensada, rango 0-100%
-- **Presión**: Compensada, rango 300-1100 hPa
-- **Precisión**: 0.01 unidades para todos los sensores
+## 🔧 Configuración Avanzada
 
-### 🔋 Gestión de Energía
+### Parámetros del Sistema (`config/config.h`)
 
-#### **Monitoreo de Batería**
 ```cpp
-float voltage = readBatteryVoltage();
-// Rango típico: 3.0V (descargada) - 4.2V (cargada)
-// Precisión: ±0.01V
+// Timing
+#define SEND_INTERVAL_SECONDS 300    // Intervalo entre envíos
+#define WATCHDOG_TIMEOUT_MINUTES 5   // Timeout del watchdog
+
+// Energía
+#define ENABLE_SOLAR_CHARGING true   // Habilitar carga solar
+#define BATTERY_LOW_THRESHOLD 20     // Umbral batería baja (%)
+
+// Display
+#define ENABLE_DISPLAY true          // Activar pantalla OLED
+#define SHOW_ACTIVITY_INDICATORS true // Mostrar indicadores
+
+// LoRaWAN
+#define LORAWAN_REGION LMIC_region_t::LMIC_REGION_eu868
+#define TX_POWER_DBM 14              // Potencia TX (máx 14dBm)
 ```
 
-#### **Modos de Consumo**
-| Modo | Consumo | Duración |
-|------|---------|----------|
-| **Activo** | 120mA | 1-2s (transmisión) |
-| **Idle** | 25mA | 10s (procesamiento) |
-| **Display ON** | 25mA | Variable |
-| **Deep Sleep** | 20μA | 60s |
+### Sensores Soportados
 
-#### **Cálculo de Autonomía**
-```
-Batería LiPo 18650 (3000mAh):
-- Consumo promedio: ~0.5mAh/ciclo
-- Ciclos/día: 1440 (cada 60s)
-- Consumo diario: ~720mAh
-- Autonomía: ~4 días
-```
+| Sensor | Pines | Datos | Precisión | Rango |
+|--------|-------|-------|-----------|-------|
+| **DHT22** | GPIO 13 | Temp, Hum | ±0.5°C, ±3% | -40°C~80°C, 0~100% |
+| **BMP280** | I2C (0x76/0x77) | Pres, Temp | ±1hPa, ±1°C | 300~1100hPa |
+| **DS18B20** | GPIO 14 (OneWire) | Temp | ±0.5°C | -55°C~125°C |
+| **HC-SR04** | GPIO 25/26 | Distancia | ±3mm | 2cm~400cm |
 
-## 📊 Monitoreo y Debugging
+## 📱 Estados del Display OLED
 
-### 🔍 Serial Monitor
+### Secuencia Normal
+1. **"Proyecto LoRaWAN"** (2s)
+2. **"Bajo Consumo"** (2s)
+3. **"Uniéndose OTAA..."** (persistente hasta join)
+4. **"Unido a TTN!"** (3s)
+5. **Datos ambientales** (5s) - según sensores activos
+6. **"Datos enviados!"** (2s)
+7. **Pantalla apagada** (ahorro energía)
 
-#### **Logs Normales**
-```
-Sistema inicializado
-Uniéndose a red LoRaWAN...
-EV_JOINING
-Unión exitosa a la red LoRaWAN
-EV_JOINED
-Enviando: T=25.67°C, H=65.43%, P=1013.25 hPa, B=3.85V
-EV_TXCOMPLETE
-RSSI: -45 dBm, SNR: 8 dB
-ACK recibido de gateway
-Entrando en deep sleep...
-```
+### Ejemplos de Display
 
-#### **Logs de Error**
+**Con DHT22**: `T:23.5C H:65.2% B:3.85V ☀️`
+**Con BMP280**: `T:23.1C P:1013.2hPa B:3.87V`
+**Solo batería**: `Solo bateria: 3.90V`
+
+## 📍 Verificación y Monitoreo
+
+### Serial Monitor
 ```
-Sensor BME280 no encontrado
-Enviando datos limitados: B=3.85V
-Join fallido - reintentando...
+Sistema IoT Multisensor v2.0
+Sensor: DHT22 inicializado
+Uniéndose a TTN...
+Unido exitosamente!
+DHT22: Lectura OK - T:23.45°C H:65.20%
+Payload: 7 bytes enviados
+Deep sleep: 300s
 ```
 
-### 📈 Métricas de Enlace
+### TTN Console
+- **Device Overview**: Uplinks cada 5 minutos
+- **Live Data**: Valores ambientales en tiempo real
+- **Payload Decoder**: Verificar decodificación correcta
 
-#### **Indicadores de Calidad**
-- **RSSI**: > -100 dBm (buena señal)
-- **SNR**: > 0 dB (buena relación señal-ruido)
-- **SF**: 7-12 (adaptativo según distancia)
-- **ACK**: Confirmación de recepción
+## 🛠️ Troubleshooting
 
-## 🛠️ Mantenimiento
+### Problemas Comunes
 
-### 🔄 Actualizaciones OTA
-- **Método**: Implementado pero no activado por defecto
-- **Riesgo**: Alto (puede brickear dispositivo)
-- **Recomendación**: Usar cable USB para actualizaciones
+**❌ "Sensor no encontrado"**
+- Verificar conexiones físicas
+- Comprobar pines en configuración
+- Revisar alimentación del sensor
 
-### 🔧 Reemplazo de Batería
-1. **Apagar** dispositivo completamente
-2. **Desconectar** batería LiPo
-3. **Esperar** 30 segundos (descarga capacitadores)
-4. **Conectar** nueva batería
-5. **Verificar** voltaje en display
+**❌ "Join failed"**
+- Verificar credenciales TTN
+- Comprobar región LoRaWAN
+- Revisar antena y cobertura
 
-### 🧹 Limpieza de Sensores
-- **BME280**: Evitar polvo/humedad excesiva
-- **Cubierta**: Mantener ventilación adecuada
-- **Almacenamiento**: Temperatura ambiente, <80% HR
+**❌ "Payload vacío"**
+- Verificar configuración de sensores
+- Comprobar lecturas individuales
+- Revisar formato del payload
 
-## 🚨 Solución de Problemas
-
-### ❌ **Problemas Comunes**
-
-#### **1. No se une a TTN**
-```
-Síntoma: "Join fallido - reintentando..."
-Solución:
-- Verificar credenciales APPEUI/DEVEUI/APPKEY
-- Comprobar cobertura LoRaWAN
-- Verificar frecuencia regional (868MHz EU)
-```
-
-#### **2. Sensor no responde**
-```
-Síntoma: Temperatura = -999.0°C
-Solución:
-- Verificar conexión I2C (pines SDA/SCL)
-- Comprobar alimentación sensor (3.3V)
-- Reiniciar dispositivo
-```
-
-#### **3. Display no enciende**
-```
-Síntoma: Pantalla negra permanente
-Solución:
-- Verificar conexión I2C display
-- Comprobar alimentación OLED
-- Reset físico del dispositivo
-```
-
-#### **4. Consumo alto de batería**
-```
-Síntoma: Batería se agota en horas
-Solución:
-- Verificar modo deep sleep funciona
-- Comprobar display se apaga
-- Medir corriente con multímetro
-```
-
-### 🔧 **Herramientas de Diagnóstico**
-
-#### **Test Manual de Componentes**
+### Debug Avanzado
 ```cpp
-// Ejecutar en Serial Monitor para testing
-void testComponents() {
-    // Test sensor
-    float t, h, p, b;
-    bool sensorOk = getSensorDataForDisplay(t, h, p, b);
-    Serial.printf("Sensor: %s\n", sensorOk ? "OK" : "ERROR");
-
-    // Test display
-    sendInfoMessage("Test Display", 2000);
-    Serial.println("Display: Test enviado");
-
-    // Test batería
-    Serial.printf("Batería: %.2fV\n", b);
-}
+// Habilitar logs detallados
+#define ENABLE_SERIAL_LOGS true
+#define LOG_LEVEL 2  // 0: ninguno, 1: básico, 2: detallado
 ```
-
-#### **Modo Debug Avanzado**
-```cpp
-#define DEBUG_MODE 1  // En pgm_board.cpp
-// Habilita logs detallados de:
-// - Tiempos de ejecución
-// - Estados LoRaWAN
-// - Lecturas de sensores crudas
-// - Consumo de memoria
-```
-
-## 📈 Optimización de Rendimiento
-
-### ⚡ **Mejoras de Consumo**
-- **Deep sleep**: 60s entre transmisiones
-- **Display off**: Apagado automático tras 5s
-- **Sensor polling**: Solo durante transmisión
-- **Radio duty cycle**: <1% según regulación
-
-### 📡 **Optimización LoRaWAN**
-- **Adaptive Rate**: SF 7-12 según SNR
-- **Channel hopping**: Todos los canales 868MHz
-- **ACK timeout**: 2s máximo
-- **Rejoin automático**: Tras sesión expirada
-
-### 💾 **Gestión de Memoria**
-- **Stack**: <2KB usado
-- **Heap**: <4KB usado
-- **Flash**: 255KB de código
-- **EEPROM**: No usado (datos volátiles)
-
-## 🔒 Seguridad
-
-### 🛡️ **Medidas Implementadas**
-- **Credenciales seguras**: Almacenadas en PROGMEM
-- **Sesiones encriptadas**: LoRaWAN Class A
-- **Datos validados**: Rangos y códigos de error
-- **Fail-safe**: Sistema continúa con fallos parciales
-
-### ⚠️ **Recomendaciones**
-- **No exponer** credenciales en repositorios públicos
-- **Usar HTTPS** para configuración remota
-- **Monitorear** accesos no autorizados
-- **Actualizar** firmware regularmente
 
 ---
 
-**🚀 Sistema listo para despliegue en entornos IoT críticos con monitoreo ambiental continuo**
+**🎓 Sistema Multisensor Extensible** | **📅 Noviembre 2025**

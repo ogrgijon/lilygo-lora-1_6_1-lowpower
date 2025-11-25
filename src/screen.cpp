@@ -1,36 +1,44 @@
 /**
  * @file      screen.cpp
- * @brief     Implementación de funciones de pantalla OLED
+ * @brief     Implementación de funciones de pantalla OLED usando U8g2 (simplificado)
  *
- * Este archivo contiene las funciones para gestionar la pantalla OLED,
+ * Este archivo contiene las funciones para gestionar la pantalla OLED U8g2,
  * mostrar mensajes de estado y datos del sensor.
  *
  * @author    Proyecto IoT de Bajo Consumo
- * @version   1.0
+ * @version   1.1
  * @date      2025
  */
 
 #include "screen.h"
 #include "LoRaBoards.h"
+#include "../config/config.h"  // Configuración del proyecto
 
-// Configuración de la cola de mensajes
-#define MAX_SCREEN_MESSAGES 10
-static ScreenMessage messageQueue[MAX_SCREEN_MESSAGES];
-static int messageCount = 0;
-static int currentMessageIndex = -1;
-static uint32_t lastUpdateTime = 0;
+// Declaraciones forward
+void turnOffDisplay();
+void turnOffDisplayCompletely();
+
+// Variables para controlar el estado del mensaje actual
+static String currentMessage = "";
+static ScreenMessageType currentType = MSG_INFO;
+static uint32_t messageStartTime = 0;
+static uint32_t messageDuration = 0;
 static bool displayActive = false;
 
-// Variables para controlar el estado de la pantalla
-static uint32_t currentMessageStartTime = 0;
-static bool screenNeedsUpdate = false;
-
 /**
- * @brief Inicializa la pantalla OLED
+ * @brief Inicializa la pantalla OLED U8g2
  *
  * @return true si la inicialización es exitosa, false en caso contrario
  */
 bool initDisplay() {
+    if (!ENABLE_DISPLAY) {
+        Serial.println("Display disabled in configuration");
+        return false;
+    }
+
+    Serial.print("DEBUG: Initializing display, u8g2 = ");
+    Serial.println((u8g2 != nullptr) ? "not null" : "null");
+
     if (!u8g2) {
         Serial.println("Display no disponible");
         return false;
@@ -39,90 +47,57 @@ bool initDisplay() {
     u8g2->clearBuffer();
     u8g2->setFont(u8g2_font_ncenB08_tr);
     u8g2->drawStr(0, 20, "MediaLab LoRaWAN");
-    u8g2->drawStr(0, 40, "Bajo Consumo V.1.0");
+    u8g2->drawStr(0, 40, "Bajo Consumo V.1.1");
     u8g2->sendBuffer();
     delay(2000);
 
     displayActive = true;
-    screenNeedsUpdate = true;
-
     return true;
 }
 
 /**
- * @brief Agrega un mensaje a la cola
- *
- * @param message Mensaje a agregar
- * @return true si se agregó correctamente, false si la cola está llena
+ * @brief Actualiza la pantalla (llamar en loop principal)
+ * Maneja el tiempo de visualización de mensajes
  */
-static bool addMessageToQueue(const ScreenMessage& message) {
-    if (messageCount >= MAX_SCREEN_MESSAGES) {
-        // Cola llena, eliminar el mensaje más antiguo
-        for (int i = 1; i < messageCount; i++) {
-            messageQueue[i-1] = messageQueue[i];
-        }
-        messageCount--;
+void updateDisplay() {
+    if (!ENABLE_DISPLAY) {
+        return;
     }
 
-    messageQueue[messageCount] = message;
-    messageQueue[messageCount].timestamp = millis();
-    messageQueue[messageCount].displayed = false;
-    messageCount++;
-
-    screenNeedsUpdate = true;
-    return true;
-}
-
-/**
- * @brief Obtiene el siguiente mensaje a mostrar
- *
- * @return Índice del mensaje a mostrar, o -1 si no hay mensajes
- */
-static int getNextMessageIndex() {
-    if (messageCount == 0) return -1;
+    if (!u8g2 || !displayActive) {
+        return;
+    }
 
     uint32_t currentTime = millis();
 
-    // Si hay un mensaje actual y no ha expirado, mantenerlo
-    if (currentMessageIndex >= 0 && currentMessageIndex < messageCount) {
-        ScreenMessage& currentMsg = messageQueue[currentMessageIndex];
-        if (currentMsg.duration == 0 ||
-            (currentTime - currentMsg.timestamp) < currentMsg.duration) {
-            return currentMessageIndex;
-        }
+    // Si hay un mensaje con duración finita y ha expirado, limpiar pantalla y apagar
+    if (messageDuration > 0 && currentTime - messageStartTime >= messageDuration) {
+        clearDisplay();
+        turnOffDisplay();
     }
-
-    // Buscar el siguiente mensaje no mostrado
-    for (int i = 0; i < messageCount; i++) {
-        if (!messageQueue[i].displayed) {
-            return i;
-        }
-    }
-
-    // Si todos los mensajes se mostraron, mostrar el último mensaje permanente
-    for (int i = messageCount - 1; i >= 0; i--) {
-        if (messageQueue[i].duration == 0) {
-            return i;
-        }
-    }
-
-    return -1; // No hay mensajes para mostrar
 }
 
 /**
  * @brief Renderiza un mensaje en la pantalla según su tipo
  *
- * @param message Mensaje a renderizar
+ * @param type Tipo de mensaje
+ * @param text Texto del mensaje
  */
-static void renderMessage(const ScreenMessage& message) {
-    if (!u8g2) return;
+static void renderMessage(ScreenMessageType type, const String& text) {
+    if (!ENABLE_DISPLAY) {
+        return;
+    }
+
+    if (!u8g2) {
+        return;
+    }
 
     u8g2->clearBuffer();
     u8g2->setFont(u8g2_font_ncenB08_tr);
 
     // Mostrar tipo de mensaje en la parte superior
     const char* typeStr = "";
-    switch (message.type) {
+    switch (type) {
         case MSG_INFO: typeStr = "[INFO]"; break;
         case MSG_WARNING: typeStr = "[WARN]"; break;
         case MSG_ERROR: typeStr = "[ERROR]"; break;
@@ -135,169 +110,206 @@ static void renderMessage(const ScreenMessage& message) {
 
     // Mostrar el texto del mensaje
     // Dividir en líneas si es necesario
-    String text = message.text;
+    String textCopy = text;
     int maxCharsPerLine = 16; // Aproximadamente para fuente ncenB08
     int yPos = 25;
 
-    while (text.length() > 0 && yPos < 60) {
+    while (textCopy.length() > 0 && yPos < 60) {
         String line;
-        if (text.length() <= maxCharsPerLine) {
-            line = text;
-            text = "";
+        if (textCopy.length() <= maxCharsPerLine) {
+            line = textCopy;
+            textCopy = "";
         } else {
             // Buscar un espacio para cortar la línea
             int cutPos = maxCharsPerLine;
-            while (cutPos > 0 && text.charAt(cutPos) != ' ') {
+            while (cutPos > 0 && textCopy.charAt(cutPos) != ' ') {
                 cutPos--;
             }
             if (cutPos == 0) cutPos = maxCharsPerLine;
 
-            line = text.substring(0, cutPos);
-            text = text.substring(cutPos);
-            text.trim(); // Remover espacio inicial
+            line = textCopy.substring(0, cutPos);
+            textCopy = textCopy.substring(cutPos);
+            textCopy.trim(); // Remover espacio inicial
         }
 
         u8g2->drawStr(0, yPos, line.c_str());
         yPos += 12;
     }
 
+    // Los indicadores de actividad se muestran en turnOffDisplay(), no aquí
+
     u8g2->sendBuffer();
 }
 
 /**
- * @brief Actualiza y gestiona la pantalla (llamar en loop principal)
+ * @brief Muestra un mensaje en la pantalla con duración específica
+ *
+ * @param type Tipo de mensaje
+ * @param text Texto del mensaje
+ * @param duration Duración en milisegundos (0 = mostrar hasta que llegue otro mensaje)
  */
-void updateDisplay() {
-    if (!u8g2 || !displayActive) return;
-
-    uint32_t currentTime = millis();
-
-    // No actualizar demasiado frecuentemente para evitar flickering
-    if (currentTime - lastUpdateTime < 100) return;
-    lastUpdateTime = currentTime;
-
-    int nextMessageIndex = getNextMessageIndex();
-
-    // Si hay un cambio de mensaje o se necesita actualización
-    if (nextMessageIndex != currentMessageIndex || screenNeedsUpdate) {
-        if (nextMessageIndex >= 0) {
-            currentMessageIndex = nextMessageIndex;
-            ScreenMessage& message = messageQueue[currentMessageIndex];
-            renderMessage(message);
-            message.displayed = true;
-            currentMessageStartTime = currentTime;
-        } else {
-            // No hay mensajes para mostrar, apagar pantalla
-            turnOffDisplay();
-        }
-        screenNeedsUpdate = false;
+void showMessage(ScreenMessageType type, const String& text, uint32_t duration) {
+    if (!ENABLE_DISPLAY) {
+        return;
     }
 
-    // Verificar si el mensaje actual ha expirado
-    if (currentMessageIndex >= 0 && currentMessageIndex < messageCount) {
-        ScreenMessage& currentMsg = messageQueue[currentMessageIndex];
-        if (currentMsg.duration > 0 &&
-            (currentTime - currentMsg.timestamp) >= currentMsg.duration) {
-            // Mensaje expirado, buscar siguiente
-            screenNeedsUpdate = true;
-        }
-    }
+    Serial.print("DEBUG: Showing message: '");
+    Serial.print(text);
+    Serial.print("' for ");
+    Serial.print(duration);
+    Serial.println("ms");
+
+    currentMessage = text;
+    currentType = type;
+    messageStartTime = millis();
+    messageDuration = duration;
+
+    turnOnDisplay();
+    renderMessage(type, text);
 }
 
 /**
- * @brief Envía un mensaje a la pantalla con duración específica
+ * @brief Muestra un mensaje de información
+ *
+ * @param text Texto del mensaje
+ * @param duration Duración en milisegundos (por defecto MESSAGE_DURATION_SUCCESS)
  */
-void sendScreenMessage(ScreenMessageType type, const String& text, uint32_t duration) {
-    ScreenMessage message;
-    message.type = type;
-    message.text = text;
-    message.duration = duration;
-
-    addMessageToQueue(message);
-    
-    // Asegurar que la pantalla esté activa para mostrar el mensaje
-    if (!displayActive) {
-        displayActive = true;
-        if (u8g2) {
-            u8g2->setPowerSave(0);
-        }
-    }
+void showInfo(const String& text, uint32_t duration) {
+    if (duration == 0) duration = MESSAGE_DURATION_SUCCESS;
+    showMessage(MSG_INFO, text, duration);
 }
 
 /**
- * @brief Envía un mensaje de información
+ * @brief Muestra un mensaje de advertencia
+ *
+ * @param text Texto del mensaje
+ * @param duration Duración en milisegundos (por defecto MESSAGE_DURATION_ERROR)
  */
-void sendInfoMessage(const String& text, uint32_t duration) {
-    sendScreenMessage(MSG_INFO, text, duration);
+void showWarning(const String& text, uint32_t duration) {
+    if (duration == 0) duration = MESSAGE_DURATION_ERROR;
+    showMessage(MSG_WARNING, text, duration);
 }
 
 /**
- * @brief Envía un mensaje de advertencia
+ * @brief Muestra un mensaje de error
+ *
+ * @param text Texto del mensaje
+ * @param duration Duración en milisegundos (por defecto MESSAGE_DURATION_ERROR)
  */
-void sendWarningMessage(const String& text, uint32_t duration) {
-    sendScreenMessage(MSG_WARNING, text, duration);
+void showError(const String& text, uint32_t duration) {
+    if (duration == 0) duration = MESSAGE_DURATION_ERROR;
+    showMessage(MSG_ERROR, text, duration);
 }
 
 /**
- * @brief Envía un mensaje de error
+ * @brief Muestra un mensaje de éxito
+ *
+ * @param text Texto del mensaje
+ * @param duration Duración en milisegundos (por defecto MESSAGE_DURATION_SUCCESS)
  */
-void sendErrorMessage(const String& text, uint32_t duration) {
-    sendScreenMessage(MSG_ERROR, text, duration);
-}
-
-/**
- * @brief Envía un mensaje de éxito
- */
-void sendSuccessMessage(const String& text, uint32_t duration) {
-    sendScreenMessage(MSG_SUCCESS, text, duration);
+void showSuccess(const String& text, uint32_t duration) {
+    if (duration == 0) duration = MESSAGE_DURATION_SUCCESS;
+    showMessage(MSG_SUCCESS, text, duration);
 }
 
 /**
  * @brief Muestra datos del sensor en la pantalla
+ *
+ * @param temp Temperatura en °C
+ * @param hum Humedad en %
+ * @param battery Voltaje de batería en V
+ * @param duration Duración en milisegundos (por defecto 5000ms)
  */
-void displaySensorData(float temp, float hum, float pres, float battery, uint32_t duration) {
+void showSensorData(float temp, float hum, float battery, uint32_t duration) {
     char buffer[64];
-    if (temp == -999.0f && hum == -1.0f && pres == -1.0f) {
+    if (temp == -999.0f && hum == -1.0f) {
         // Datos de error del sensor
-        sendScreenMessage(MSG_ERROR, "Sensor ERROR!", duration);
+        showMessage(MSG_ERROR, "Sensor ERROR!", duration);
     } else {
         // Datos válidos del sensor
-        sprintf(buffer, "T:%.1fC H:%.1f%% P:%.1fhPa B:%.2fV", temp, hum, pres, battery);
-        sendScreenMessage(MSG_SENSOR_DATA, buffer, duration);
+        sprintf(buffer, "T:%.1fC H:%.1f%% B:%.2fV", temp, hum, battery);
+        showMessage(MSG_SENSOR_DATA, buffer, duration);
     }
 }
 
 /**
- * @brief Fuerza la actualización inmediata de la pantalla
+ * @brief Limpia la pantalla
  */
-void forceDisplayUpdate() {
-    screenNeedsUpdate = true;
-    updateDisplay();
+void clearDisplay() {
+    if (!ENABLE_DISPLAY) {
+        return;
+    }
+
+    if (u8g2) {
+        u8g2->clearBuffer();
+        u8g2->sendBuffer();
+    }
+    currentMessage = "";
+    messageDuration = 0;
 }
 
 /**
- * @brief Limpia todos los mensajes pendientes
- */
-void clearScreenMessages() {
-    messageCount = 0;
-    currentMessageIndex = -1;
-    screenNeedsUpdate = true;
-}
-
-/**
- * @brief Obtiene el número de mensajes en cola
- */
-int getPendingMessageCount() {
-    return messageCount;
-}
-
-/**
- * @brief Apaga la pantalla para ahorrar energía
+ * @brief Apaga la pantalla para ahorrar energía, pero mantiene indicadores visuales
+ *        Muestra 4 píxeles indicadores para confirmar que el dispositivo está activo
  */
 void turnOffDisplay() {
+    if (!ENABLE_DISPLAY) {
+        return;
+    }
+
     if (u8g2) {
-        u8g2->setPowerSave(1);
+        u8g2->clearBuffer();
+
+        if (SHOW_ACTIVITY_INDICATORS) {
+            // Indicadores de actividad: 4 píxeles en patrón de "cuadrado"
+            // Esquina superior derecha
+            u8g2->drawPixel(125, 1);
+            u8g2->drawPixel(126, 1);
+            u8g2->drawPixel(125, 2);
+            u8g2->drawPixel(126, 2);
+
+            u8g2->sendBuffer();
+
+            // NO apagamos completamente la pantalla para mantener los indicadores visibles
+            // u8g2->setPowerSave(1);  // Comentado para mantener indicadores
+        } else {
+            u8g2->sendBuffer();
+            u8g2->setPowerSave(1);  // Apagar completamente si no hay indicadores
+        }
     }
     displayActive = false;
-    currentMessageIndex = -1;
 }
+
+/**
+ * @brief Apaga completamente la pantalla para deep sleep (sin indicadores)
+ */
+void turnOffDisplayCompletely() {
+    if (!ENABLE_DISPLAY) {
+        return;
+    }
+
+    if (u8g2) {
+        u8g2->clearBuffer();
+        u8g2->sendBuffer();
+        u8g2->setPowerSave(1);  // Apagar completamente la pantalla
+    }
+    displayActive = false;
+}
+
+/**
+ * @brief Enciende la pantalla si está apagada
+ */
+void turnOnDisplay() {
+    if (!ENABLE_DISPLAY) {
+        return;
+    }
+
+    if (u8g2) {
+        // La pantalla nunca se apaga completamente, solo se limpia y se muestran indicadores
+        // u8g2->setPowerSave(0);  // No necesario ya que nunca se apaga
+        // Pequeño delay para estabilidad
+        delay(10);
+        // El buffer ya se limpia en renderMessage()
+    }
+    displayActive = true;
+} 

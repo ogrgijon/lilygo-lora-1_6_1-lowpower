@@ -1,66 +1,150 @@
-# Descargo de Responsabilidad
+# ⚖️ Descargo de Responsabilidad
 
-## Proyecto Educativo y DIY
-
-Este proyecto es desarrollado con fines **educativos y universitarios**, como parte de un ejercicio de aprendizaje en el campo de la electrónica, la programación embebida y las comunicaciones inalámbricas. No se trata de un producto comercial ni de una solución profesional certificada. Es un proyecto **Do It Yourself (DIY)** que requiere conocimientos técnicos previos en electrónica, programación y comunicaciones.
-
-**Advertencia importante:** La implementación y uso de este proyecto implica riesgos técnicos y legales. Los autores y colaboradores de este proyecto no asumen ninguna responsabilidad por el mal uso, daños, pérdidas o consecuencias derivadas de su aplicación.
-
-## Cumplimiento Legal y Regulatorio
-
-### Espectro Radioeléctrico
-El uso de dispositivos de radiofrecuencia, como los módulos LoRa utilizados en este proyecto, está regulado por leyes nacionales e internacionales sobre el espectro radioeléctrico. En la mayoría de los países, incluyendo España y otros miembros de la Unión Europea, el uso de bandas ISM (Industrial, Scientific and Medical) como las utilizadas por LoRa (433 MHz, 868 MHz, 915 MHz) requiere:
-
-- **Conocimiento de las regulaciones locales**: Debe consultar y cumplir con las normativas específicas de su país o región. Por ejemplo:
-  - En España: Regulado por la Comisión Nacional de los Mercados y la Competencia (CNMC) y la Agencia Estatal de Telecomunicaciones (AET).
-  - En la UE: Directiva 2014/53/UE (RED) y recomendaciones de la CEPT/ETSI.
-  - En otros países: Regulaciones similares de agencias como FCC (EE.UU.), ANATEL (Brasil), etc.
-
-- **Limitaciones de potencia y frecuencia**: No exceda los límites de potencia de transmisión permitidos (típicamente 25 mW para LoRa en banda ISM europea) ni utilice frecuencias no autorizadas.
-
-- **Licencias y permisos**: En algunos casos, puede requerir licencias específicas para transmisión, especialmente si se utiliza fuera de entornos controlados o para aplicaciones comerciales.
-
-**Obligación del usuario:** Es responsabilidad exclusiva del usuario investigar, entender y cumplir con todas las leyes y regulaciones aplicables en su jurisdicción. El desconocimiento de la ley no exime de responsabilidad.
-
-## Riesgos Técnicos
-
-### Interferencias y Compatibilidad Electromagnética
-- Los dispositivos LoRa pueden interferir con otros equipos electrónicos, sistemas de comunicación o equipos médicos.
-- No utilice este proyecto en entornos críticos donde las interferencias puedan causar daños o pérdidas.
-
-### Seguridad Eléctrica
-- Trabajar con circuitos electrónicos implica riesgos de descarga eléctrica, sobrecalentamiento o incendio.
-- Asegúrese de seguir prácticas de seguridad eléctrica estándar.
-
-### Fallos de Hardware y Software
-- Los componentes pueden fallar, causando pérdida de datos o funcionamiento incorrecto.
-- El código proporcionado es experimental y puede contener errores.
-
-## Responsabilidad y Limitación de Garantías
-
-Los autores, colaboradores y distribuidores de este proyecto:
-
-1. **No garantizan** el funcionamiento correcto, la fiabilidad o la seguridad del proyecto.
-2. **No se hacen responsables** de daños directos, indirectos, incidentales o consecuentes, incluyendo pero no limitados a:
-   - Pérdida de datos
-   - Daños a equipos
-   - Multas o sanciones legales
-   - Lesiones personales
-   - Pérdidas económicas
-
-3. **No proporcionan soporte técnico oficial** ni garantías de mantenimiento.
-
-## Recomendaciones
-
-- **Pruebas en entornos controlados**: Realice todas las pruebas en laboratorios o entornos aislados antes de cualquier despliegue.
-- **Consulta profesional**: Si planea utilizar este proyecto en aplicaciones críticas o comerciales, consulte con expertos en telecomunicaciones y abogados especializados en regulaciones radioeléctricas.
-- **Actualización de conocimientos**: Manténgase informado sobre cambios en las regulaciones del espectro radioeléctrico.
-- **Documentación adicional**: Revise la documentación técnica de los componentes utilizados (ESP32, módulos LoRa, sensores) y las mejores prácticas de la industria.
-
-## Aceptación del Riesgo
-
-Al descargar, modificar, compilar o utilizar este proyecto, el usuario acepta explícitamente todos los términos de este descargo de responsabilidad. Si no está de acuerdo con estos términos, no utilice el proyecto.
+**Limitaciones legales y términos de uso del proyecto IoT LoRaWAN**
 
 ---
 
-**Última actualización:** 22 de noviembre de 2025
+## ⚠️ **Descargo de Responsabilidad**
+
+### 📜 **Uso Exclusivo Educativo**
+Este proyecto está diseñado **únicamente para fines educativos, académicos y de investigación**. No debe utilizarse en aplicaciones comerciales, críticas para la seguridad, médicas o donde un fallo pueda causar daño a personas, propiedad o medio ambiente.
+
+**El autor y colaboradores no asumen responsabilidad alguna por:**
+- Daños directos, indirectos, incidentales o consecuentes
+- Pérdida de datos, información o propiedad
+- Interrupción de servicios o actividades
+- Costos de reparación, reemplazo o recuperación
+- Pérdidas económicas, comerciales o de cualquier naturaleza
+
+### 🔌 **Hardware y Componentes**
+- **Compatibilidad**: Código diseñado específicamente para LilyGo T3 v1.6.1
+- **Componentes**: Verifique compatibilidad de sensores antes del uso
+- **Alimentación**: Use fuentes apropiadas para evitar daños
+- **Modificaciones**: Cualquier alteración del hardware es bajo su riesgo
+
+### 📡 **Conectividad LoRaWAN**
+- **Cobertura**: Disponibilidad de gateways TTN no garantizada
+- **Regulaciones**: Uso de frecuencias LoRa puede estar regulado localmente
+- **Duty Cycle**: Respete límites para evitar sanciones regulatorias
+- **Costos**: TTN gratuito, pero pueden existir costos asociados
+
+---
+
+## 📋 **Términos de Uso**
+
+### 🎓 **Licencia MIT**
+- **Uso libre**: Para fines educativos y no comerciales
+- **Modificaciones**: Permitidas bajo los mismos términos
+- **Distribución**: Permitida con atribución al autor original
+- **Sin garantía**: No hay garantía de funcionamiento o idoneidad
+
+### 🔧 **Requisitos del Sistema**
+- **Hardware**: LilyGo T3 v1.6.1 con ESP32
+- **Software**: PlatformIO, VS Code, dependencias especificadas
+- **Conocimientos**: Programación básica en C/C++ recomendada
+- **Responsabilidad**: Usuario asume riesgos de instalación y uso
+
+### 📊 **Datos y Privacidad**
+- **Recopilación**: Datos ambientales básicos (temperatura, humedad, etc.)
+- **Transmisión**: Datos enviados a servidores TTN externos
+- **Anonimato**: No recopila datos personales identificables
+- **Consentimiento**: Obtenga permisos para despliegues públicos
+
+---
+
+## 🚫 **Limitaciones Técnicas**
+
+### ⚡ **Rendimiento**
+- **Fiabilidad**: No garantizada operación continua
+- **Interferencias**: Factores ambientales afectan rendimiento
+- **Autonomía**: Depende de configuración y condiciones
+- **Alcance**: Varía según cobertura LoRaWAN local
+
+### 🛠️ **Soporte**
+- **Sin soporte oficial**: Proyecto de código abierto voluntario
+- **Comunidad**: Use GitHub issues para reportes
+- **Actualizaciones**: Correcciones no garantizadas
+- **Compatibilidad**: Sin garantía con versiones futuras
+
+### 💰 **Costos**
+- **Hardware**: Componentes no incluidos en el proyecto
+- **Energía**: Consumo durante desarrollo y pruebas
+- **Internet**: Acceso requerido para configuración TTN
+- **Mantenimiento**: Reparaciones y reemplazos no cubiertos
+
+---
+
+## 🏛️ **Consideraciones Legales**
+
+### 🌍 **Cumplimiento Normativo**
+- **Telecomunicaciones**: Verifique regulaciones locales de radiofrecuencia
+- **Espectro**: Banda ISM 868MHz (Europa) puede requerir permisos
+- **Estándares**: Cumpla con CE/ETSI si corresponde
+- **Local**: Consulte autoridades antes de despliegues públicos
+
+### 🏢 **Uso Institucional**
+- **Educativo**: Aprobado para entornos académicos
+- **Investigación**: Puede requerir aprobación institucional
+- **Comercial**: No recomendado sin evaluación adicional
+- **Público**: Obtenga permisos para espacios públicos
+
+### 📝 **Propiedad Intelectual**
+- **Código**: Licencia MIT (ver archivo LICENSE)
+- **Marcas**: TTN, LoRaWAN, ESP32 son propiedad de sus dueños
+- **Librerías**: Cada librería tiene sus propios términos
+- **Contribuciones**: Siguen la misma licencia del proyecto
+
+---
+
+## 🚨 **Protocolo de Seguridad**
+
+### ⚠️ **Antes del Uso**
+- [ ] Leer documentación completa
+- [ ] Verificar compatibilidad hardware
+- [ ] Obtener credenciales TTN válidas
+- [ ] Probar en entorno controlado
+- [ ] Verificar cumplimiento normativo
+
+### 🆘 **En Caso de Problemas**
+1. **Detener**: Desconectar dispositivo inmediatamente
+2. **Reportar**: Usar GitHub issues para problemas técnicos
+3. **Documentar**: Incluir logs y descripción detallada
+4. **No compartir**: No redistribuir credenciales comprometidas
+
+### 🔒 **Seguridad Básica**
+- Usar contraseñas fuertes en TTN
+- No compartir credenciales en código público
+- Monitorear uso en TTN Console
+- Eliminar dispositivos no utilizados
+
+---
+
+## 📞 **Información de Contacto**
+
+### 🐛 **Soporte Técnico**
+- **GitHub Issues**: Para bugs y mejoras técnicas
+- **Documentación**: Revisar docs/ antes de reportar
+- **Comunidad**: Foros TTN para preguntas generales
+
+### 📧 **Información Legal**
+- **Proyecto**: Académico/universitario
+- **Fecha**: Noviembre 2025
+- **Versión**: 1.0
+
+---
+
+## ✅ **Aceptación de Términos**
+
+**Al descargar, instalar o usar este proyecto, usted acepta:**
+
+1. **Comprender** las limitaciones y riesgos aquí descritos
+2. **Asumir** toda responsabilidad por el uso del software/hardware
+3. **Cumplir** con leyes y regulaciones aplicables
+4. **No demandar** al autor por daños, pérdidas o perjuicios
+5. **Usar** exclusivamente para fines educativos apropiados
+
+---
+
+**⚖️ Este descargo de responsabilidad debe leerse y aceptarse antes del uso del proyecto.**
+
+*Última actualización: Noviembre 2025*
