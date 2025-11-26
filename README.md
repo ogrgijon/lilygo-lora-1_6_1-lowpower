@@ -1,5 +1,20 @@
 # 🌡️ Sistema IoT LoRaWAN Multisensor - Bajo Consumo
 
+> ### 🎓 Proyecto Académico - Sin Ánimo de Lucro
+> Este proyecto ha sido desarrollado para apoyar a los investigadores y prototipos del Medialab de la Universidad de Oviedo.  
+
+> Todo el código, documentación y diseños están disponibles gratuitamente para fines educativos y de investigación.
+
+---
+
+> ### ⚠️ Responsabilidad y Normativa
+> Antes de desplegar el sistema, consulta el documento:  
+> [docs/responsabilidad.md](docs/responsabilidad.md)  
+> Uso responsable y ético.  
+> **Importante:** Infórmate sobre la normativa vigente del espectro radioeléctrico en tu país para operar dispositivos LoRaWAN legalmente.
+
+---
+
 **Nodo sensor ambiental inteligente para ESP32 LilyGo T3 v1.6.1 con LoRaWAN**
 
 [![PlatformIO](https://img.shields.io/badge/PlatformIO-3776AB?logo=platformio)](https://platformio.org/)
@@ -415,4 +430,10 @@ ESP32 LilyGo T3 v1.6.1
 *[Empieza aquí](docs/uso.md)* | *[Arquitectura técnica](docs/arquitectura.md)* | *[Solución de problemas](docs/troubleshooting.md)*
 
 ---
-**📅 Actualizado: Noviembre 2024** | **🔧 LilyGo T3 v1.6.1** | **📡 LoRaWAN EU868**
+**📅 Actualizado: Noviembre 2025** | **🔧 LilyGo T3 v1.6.1** | **📡 LoRaWAN EU868**
+
+# LILYGO LoRa T3 Low Power PINOUT
+
+[Datasheet](docs/datasheet.pdf)
+
+![Board](docs/board.jpg)
