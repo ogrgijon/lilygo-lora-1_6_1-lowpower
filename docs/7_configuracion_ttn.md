@@ -6,7 +6,7 @@ Para configurar las claves LoRaWAN de tu dispositivo:
 
 ### 1. Copiar la plantilla
 ```bash
-cp include/lorawan_config_template.h include/lorawan_config.h
+cp config/lorawan_config_template.h config/lorawan_config.h
 ```
 
 ### 2. Obtener claves de TTN
@@ -16,7 +16,7 @@ Ve a tu aplicación en [The Things Network](https://console.thethingsnetwork.org
 - Copia el **Application Key** (AppKey) en formato MSB
 
 ### 3. Actualizar lorawan_config.h
-Edita `include/lorawan_config.h` y reemplaza los valores de ejemplo con tus claves reales:
+Edita `config/lorawan_config.h` y reemplaza los valores de ejemplo con tus claves reales:
 
 ```cpp
 // Application EUI (AppEUI) - LSB format

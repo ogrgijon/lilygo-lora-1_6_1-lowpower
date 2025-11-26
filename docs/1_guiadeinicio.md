@@ -298,7 +298,7 @@ function decodeUplink(input) {
 
 ### ❓ ¿Problemas?
 Si algo no funciona:
-1. Revisa [**Troubleshooting**](../docs/troubleshooting.md)
+1. Revisa [**Troubleshooting**](../docs/9_troubleshooting.md)
 2. Verifica conexiones físicas
 3. Comprueba logs en Serial Monitor de VS Code
 

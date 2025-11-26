@@ -9,7 +9,7 @@
 
 > ### ⚠️ Responsabilidad y Normativa
 > Antes de desplegar el sistema, consulta el documento:  
-> [docs/responsabilidad.md](docs/responsabilidad.md)  
+> [docs/2_responsabilidad.md](docs/2_responsabilidad.md)  
 > Uso responsable y ético.  
 > **Importante:** Infórmate sobre la normativa vigente del espectro radioeléctrico en tu país para operar dispositivos LoRaWAN legalmente.
 
@@ -84,11 +84,11 @@ pio run --target upload --upload-port COM3
 
 | Documento | Contenido | Tiempo |
 |-----------|-----------|--------|
-| [**📖 Guía de Uso**](docs/uso.md) | Configuración completa paso a paso | 20 min |
-| [**🏛️ Arquitectura**](docs/arquitectura.md) | Diseño técnico del sistema | 15 min |
-| [**🔧 Troubleshooting**](docs/troubleshooting.md) | Solución de problemas comunes | 15 min |
-| [**⚙️ Desarrollo**](docs/desarrollo.md) | Modificar y extender el código | 30 min |
-| [**📡 Configuración TTN**](docs/configuracion_ttn.md) | Setup completo en TTN | 10 min |
+| [**📖 Guía de Uso**](docs/6_uso.md) | Configuración completa paso a paso | 20 min |
+| [**🏛️ Arquitectura**](docs/4_arquitectura.md) | Diseño técnico del sistema | 15 min |
+| [**🔧 Troubleshooting**](docs/9_troubleshooting.md) | Solución de problemas comunes | 15 min |
+| [**⚙️ Desarrollo**](docs/5_desarrollo.md) | Modificar y extender el código | 30 min |
+| [**📡 Configuración TTN**](docs/7_configuracion_ttn.md) | Setup completo en TTN | 10 min |
 
 ---
 
@@ -141,27 +141,19 @@ function decodeUplink(input) {
   // Determinar qué campos están presentes por el tamaño del payload
   var payloadSize = bytes.length;
 
-  // Temperatura (siempre presente en configuraciones con sensores de temp)
-  if (payloadSize >= 7) {
+  // Temperatura y humedad (para DHT22, 6 bytes)
+  if (payloadSize >= 6) {
     data.temperature = ((bytes[offset++] << 8) | bytes[offset++]) / 100.0;
-  }
-
-  // Humedad (si payload >= 7 y hay sensores de humedad)
-  if (payloadSize >= 7 && (payloadSize === 7 || payloadSize >= 9)) {
     data.humidity = ((bytes[offset++] << 8) | bytes[offset++]) / 100.0;
   }
 
-  // Presión (si payload >= 9)
-  if (payloadSize >= 9) {
+  // Presión (para DHT22 + BMP280, 8 bytes)
+  if (payloadSize >= 8) {
     data.pressure = ((bytes[offset++] << 8) | bytes[offset++]) / 10.0;
   }
 
   // Batería (siempre presente, últimos 2 bytes)
   data.battery_voltage = ((bytes[offset++] << 8) | bytes[offset++]) / 100.0;
-
-  // Estado solar (siempre presente, último byte)
-  data.solar_charging = bytes[offset] === 1;
-  data.energy_source = data.solar_charging ? "Solar + Battery" : "Battery Only";
 
   return { data: data, warnings: [], errors: [] };
 }
@@ -171,9 +163,9 @@ function decodeUplink(input) {
 
 | Configuración | Payload (hex) | Datos Decodificados |
 |---------------|---------------|-------------------|
-| **Solo batería** | `0DAC 01` | `{"battery_voltage": 3.85, "solar_charging": true}` |
-| **DHT22** | `01F4 0FA0 0DAC 01` | `{"temperature": 25.00, "humidity": 65.20, "battery_voltage": 3.85, "solar_charging": true}` |
-| **DHT22 + BMP280** | `01F4 0FA0 2328 0DAC 01` | `{"temperature": 25.00, "humidity": 65.20, "pressure": 1013.2, "battery_voltage": 3.85, "solar_charging": true}` |
+| **Solo batería** | `0DAC` | `{"battery_voltage": 3.85}` |
+| **DHT22** | `01F4 0FA0 0DAC` | `{"temperature": 25.00, "humidity": 65.20, "battery_voltage": 3.85}` |
+| **DHT22 + BMP280** | `01F4 0FA0 2328 0DAC` | `{"temperature": 25.00, "humidity": 65.20, "pressure": 1013.2, "battery_voltage": 3.85}` |
 
 ---
 
@@ -235,7 +227,7 @@ low-power-project/
 │       ├── sensor_none.h         # Config sin sensores
 │       └── sensor_template.h     # Plantilla para nuevos sensores
 ├── 📁 src/                       # 📄 Código fuente principal
-│   ├── main_otta.ino             # 🚀 Punto de entrada principal
+│   ├── main.ino                 # 🚀 Punto de entrada principal
 │   ├── LoRaBoards.cpp/.h         # 📡 Configuración hardware LoRa
 │   ├── pgm_board.cpp             # 🔧 Gestión LoRaWAN y OTAA
 │   ├── sensor.cpp                # 🌡️ Lógica multisensor
@@ -246,16 +238,17 @@ low-power-project/
 │   ├── loramac.h                 # Headers LoRaWAN
 │   └── utilities.h               # Headers utilidades
 ├── 📁 docs/                      # 📚 Documentación completa
-│   ├── arquitectura.md           # 🏗️ Arquitectura del sistema
-│   ├── configuracion_ttn.md      # 📡 Setup TTN
-│   ├── desarrollo.md             # 🔧 Guía de desarrollo
-│   ├── guiadeinicio.md           # 🚀 Guía de inicio rápido
-│   ├── hardware.md               # 🔧 Especificaciones hardware
-│   ├── responsabilidad.md        # ⚖️ Responsabilidades del proyecto
-│   ├── troubleshooting.md        # 🛠️ Solución de problemas
-│   ├── ttn_decoder.md            # 📊 Decodificadores TTN
-│   ├── uso.md                    # 📖 Guía de uso detallada
-│   └── lilygo-ttgo-t3-lora32-868mhz-v1.6.1.jpg # Imagen hardware
+│   ├── 1_guiadeinicio.md         # 🚀 Guía de inicio rápido
+│   ├── 2_responsabilidad.md      # ⚖️ Responsabilidades del proyecto
+│   ├── 3_hardware.md             # 🔧 Especificaciones hardware
+│   ├── 4_arquitectura.md         # 🏗️ Arquitectura del sistema
+│   ├── 5_desarrollo.md           # 🔧 Guía de desarrollo
+│   ├── 6_uso.md                  # 📖 Guía de uso detallada
+│   ├── 7_configuracion_ttn.md    # 📡 Setup TTN
+│   ├── 8_ttn_decoder.md          # 📊 Decodificadores TTN
+│   ├── 9_troubleshooting.md      # 🛠️ Solución de problemas
+│   ├── board.jpg                 # Imagen hardware
+│   └── datasheet_T3_V1.6.1.pdf   # Datasheet del dispositivo
 ├── platformio.ini                # ⚙️ Configuración PlatformIO
 ├── README.md                     # 📄 Este archivo
 └── .gitignore                    # 🚫 Archivos ignorados por Git
@@ -362,9 +355,9 @@ bool sensor_mi_sensor_read_all(sensor_data_t* data) {
 ## 📞 Soporte
 
 ### 🆘 **¿Problemas?**
-1. **Lee primero**: [Guía de troubleshooting](docs/troubleshooting.md)
-2. **Configuración**: [Guía de uso](docs/uso.md)
-3. **TTN Setup**: [Configuración TTN](docs/configuracion_ttn.md)
+1. **Lee primero**: [Guía de troubleshooting](docs/9_troubleshooting.md)
+2. **Configuración**: [Guía de uso](docs/6_uso.md)
+3. **TTN Setup**: [Configuración TTN](docs/7_configuracion_ttn.md)
 
 ### 🐛 **Reportar Bugs**
 ```markdown
@@ -427,13 +420,13 @@ ESP32 LilyGo T3 v1.6.1
 
 **¡Bienvenido al mundo del IoT con LoRaWAN!** 🌟
 
-*[Empieza aquí](docs/uso.md)* | *[Arquitectura técnica](docs/arquitectura.md)* | *[Solución de problemas](docs/troubleshooting.md)*
+*[Empieza aquí](docs/6_uso.md)* | *[Arquitectura técnica](docs/4_arquitectura.md)* | *[Solución de problemas](docs/9_troubleshooting.md)*
 
 ---
 **📅 Actualizado: Noviembre 2025** | **🔧 LilyGo T3 v1.6.1** | **📡 LoRaWAN EU868**
 
 # LILYGO LoRa T3 Low Power PINOUT
 
-[Datasheet](docs/datasheet.pdf)
+[Datasheet](docs/datasheet_T3_V1.6.1.pdf)
 
 ![Board](docs/board.jpg)

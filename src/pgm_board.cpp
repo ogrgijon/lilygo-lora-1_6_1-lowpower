@@ -163,11 +163,10 @@ void os_getDevKey (u1_t *buf)
  * que incluye temperatura, humedad y voltaje de batería.
  * Envía los datos vía LoRaWAN y maneja la interfaz de usuario en pantalla.
  *
- * Formato de datos (7 bytes):
+ * Formato de datos (6 bytes):
  * - Bytes 0-1: Temperatura (°C * 100, int16 big-endian)
  * - Bytes 2-3: Humedad (% * 100, uint16 big-endian)
  * - Bytes 4-5: Batería (V * 100, uint16 big-endian)
- * - Byte 6: Estado de carga solar (0=no, 1=sí)
  *
  * @param j  Puntero al trabajo OS (no usado directamente)
  *
@@ -217,11 +216,6 @@ void do_send(osjob_t *j)
         os_setTimedCallback(&sendjob, os_getTime() + sec2osticks(10), do_send);
         return;
     }
-
-    // ==================== AGREGAR ESTADO SOLAR ====================
-    // Agregar estado de carga solar como byte adicional
-    payload[payloadSize] = isSolarChargingBattery() ? 1 : 0;
-    payloadSize++;  // Ahora tenemos bytes adicionales
 
     // ==================== OBTENER DATOS PARA DISPLAY ====================
     sensor_data_t sensorData;
@@ -481,7 +475,7 @@ void setupLMIC(void)
     // Deshabilitar validación de enlace (link check) para simplificar
     LMIC_setLinkCheckMode(0);
 
-    // Configurar downlink RX2 con SF9 (estándar TTN)
+    // Configurar downlink RX2 with SF9 (estándar TTN)
     LMIC.dn2Dr = DR_SF9;
 
     // Configurar spread factor y potencia de transmisión (aumentada para mejor alcance)

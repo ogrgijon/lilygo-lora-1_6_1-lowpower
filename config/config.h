@@ -108,7 +108,7 @@
 
 #define ENABLE_SERIAL_LOGS true      // Habilitar logs por Serial
 #define LOG_LEVEL 1                  // 0: ninguno, 1: básico, 2: detallado
-#define SHOW_TTN_DECODER false   // true: mostrar decoder TTN por Serial al iniciar
+#define SHOW_TTN_DECODER true  // true: mostrar decoder TTN por Serial al iniciar
 
 // =============================================================================
 // CONFIGURACIÓN DE PAYLOAD Y DATOS
@@ -173,8 +173,7 @@
     PAYLOAD_SIZE_HUMIDITY + \
     PAYLOAD_SIZE_PRESSURE + \
     PAYLOAD_SIZE_DISTANCE + \
-    2 /* batería */ + \
-    1 /* estado solar */ \
+    2 /* batería */ \
 )
 
 // Valores de error para lecturas fallidas

@@ -24,7 +24,7 @@ Esta guía te enseñará a:
 ```
 low-power-project/
 ├── 📁 src/                    # Código fuente principal
-│   ├── main_otta.ino         # 🚀 Punto de entrada (Arduino)
+│   ├── main.ino             # 🚀 Punto de entrada (Arduino)
 │   ├── pgm_board.cpp         # 📡 Lógica LoRaWAN
 │   ├── sensor.cpp            # 🌡️ Gestión multisensor
 │   ├── screen.cpp            # 🖥️ Display OLED
@@ -48,7 +48,7 @@ low-power-project/
 
 | Módulo | Responsabilidad | Archivo Principal |
 |--------|----------------|-------------------|
-| **Main** | Inicialización y ciclo principal | `main_otta.ino` |
+| **Main** | Inicialización y ciclo principal | `main.ino` |
 | **LoRaWAN** | Comunicación con TTN | `pgm_board.cpp` |
 | **Sensor** | Lectura de sensores | `sensor.cpp` + `src/sensor/*.cpp` |
 | **Display** | Interfaz OLED | `screen.cpp` |
@@ -110,9 +110,9 @@ static const u1_t PROGMEM APPKEY[16] = {/* tus valores */};
 
 ### Paso 1: Elige un Sensor
 
-Para este ejemplo, agregaremos soporte para un **sensor de luz BH1750** que mide luminosidad en lux.
+Para este ejemplo, agregaremos soporte para un **sensor de luz BMP280** que mide luminosidad en lux.
 
-**Características del BH1750**:
+**Características del BMP280**:
 - Interfaz: I2C
 - Rango: 1-65535 lux
 - Alimentación: 3.3V
@@ -124,47 +124,47 @@ Para este ejemplo, agregaremos soporte para un **sensor de luz BH1750** que mide
 
 ```cpp
 // Agrega al final de la sección de sensores
-#define ENABLE_SENSOR_BH1750    // Sensor de luminosidad BH1750
+#define ENABLE_SENSOR_BMP280    // Sensor de presión BMP280
 ```
 
 ### Paso 3: Crea el Archivo del Sensor
 
-**Archivo**: `src/sensor/sensor_bh1750.cpp`
+**Archivo**: `src/sensor/sensor_template.cpp`
 
 ```cpp
-#ifdef ENABLE_SENSOR_BH1750
+#ifdef ENABLE_SENSOR_BMP280
 
 #include <Wire.h>
-#include <BH1750.h>  // Librería del sensor
+#include <BMP280.h>  // Librería del sensor
 #include "config.h"
 
 // Variables globales
-static BH1750 lightMeter;
+static BMP280 lightMeter;
 static bool sensor_available = false;
 
 // Pines I2C (compartidos con otros sensores)
-#define BH1750_I2C_SDA 21
-#define BH1750_I2C_SCL 22
-#define BH1750_I2C_ADDR 0x23  // Dirección por defecto
+#define BMP280_I2C_SDA 21
+#define BMP280_I2C_SCL 22
+#define BMP280_I2C_ADDR 0x23  // Dirección por defecto
 
 // Función de inicialización
-bool sensor_bh1750_init(void) {
+bool sensor_BMP280_init(void) {
     // Inicializar I2C si no está inicializado
-    Wire.begin(BH1750_I2C_SDA, BH1750_I2C_SCL);
+    Wire.begin(BMP280_I2C_SDA, BMP280_I2C_SCL);
 
     // Inicializar sensor
-    if (lightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE, BH1750_I2C_ADDR)) {
+    if (lightMeter.begin(BMP280::CONTINUOUS_HIGH_RES_MODE, BMP280_I2C_ADDR)) {
         sensor_available = true;
-        Serial.println("BH1750 inicializado correctamente");
+        Serial.println("BMP280 inicializado correctamente");
         return true;
     } else {
-        Serial.println("Error: BH1750 no encontrado");
+        Serial.println("Error: BMP280 no encontrado");
         return false;
     }
 }
 
 // Función de lectura
-bool sensor_bh1750_read(sensor_data_t* data) {
+bool sensor_BMP280_read(sensor_data_t* data) {
     if (!sensor_available || !data) return false;
 
     // Leer luminosidad
@@ -172,7 +172,7 @@ bool sensor_bh1750_read(sensor_data_t* data) {
 
     // Validar lectura
     if (lux < 0 || lux > 65535) {
-        Serial.println("Error: Lectura BH1750 inválida");
+        Serial.println("Error: Lectura BMP280 inválida");
         return false;
     }
 
@@ -180,16 +180,16 @@ bool sensor_bh1750_read(sensor_data_t* data) {
     data->light = lux;
     data->valid = true;
 
-    Serial.printf("BH1750: %.1f lux\n", lux);
+    Serial.printf("BMP280: %.1f lux\n", lux);
     return true;
 }
 
 // Función de disponibilidad
-bool sensor_bh1750_available(void) {
+bool sensor_BMP280_available(void) {
     return sensor_available;
 }
 
-#endif // ENABLE_SENSOR_BH1750
+#endif // ENABLE_SENSOR_BMP280
 ```
 
 ### Paso 4: Actualiza la Estructura de Datos
@@ -208,7 +208,7 @@ typedef struct {
     bool solar_charging;
     bool valid;
 
-    // Nuevo campo para BH1750
+    // Nuevo campo para BMP280
     float light;  // Luminosidad en lux
 } sensor_data_t;
 ```
@@ -219,7 +219,7 @@ typedef struct {
 
 ```cpp
 // Incluye el nuevo sensor
-#include "sensor_bh1750.h"
+#include "sensor_template.h"
 
 // En la función sensors_init_all()
 bool sensors_init_all(void) {
@@ -233,9 +233,9 @@ bool sensors_init_all(void) {
     success &= sensor_ds18b20_init();
     #endif
 
-    // Agrega inicialización BH1750
-    #ifdef ENABLE_SENSOR_BH1750
-    success &= sensor_bh1750_init();
+    // Agrega inicialización BMP280
+    #ifdef ENABLE_SENSOR_BMP280
+    success &= sensor_BMP280_init();
     #endif
 
     return success;
@@ -256,9 +256,9 @@ bool sensors_read_all(sensor_data_t* data) {
     success &= sensor_ds18b20_read(data);
     #endif
 
-    // Leer BH1750
-    #ifdef ENABLE_SENSOR_BH1750
-    success &= sensor_bh1750_read(data);
+    // Leer BMP280
+    #ifdef ENABLE_SENSOR_BMP280
+    success &= sensor_BMP280_read(data);
     #endif
 
     // Leer batería (siempre)
@@ -322,8 +322,8 @@ uint8_t getSensorPayload(uint8_t* payload, uint8_t maxSize) {
     }
     #endif
 
-    // BH1750 - Luminosidad
-    #ifdef ENABLE_SENSOR_BH1750
+    // BMP280 - Luminosidad
+    #ifdef ENABLE_SENSOR_BMP280
     if (offset + 2 <= maxSize) {
         uint16_t light = (uint16_t)(data.light);
         payload[offset++] = (light >> 8) & 0xFF;
@@ -358,13 +358,13 @@ lib_deps =
     adafruit/DHT sensor library@^1.4.4
     milesburton/DallasTemperature@^3.11.0
     adafruit/Adafruit BMP280 Library@^2.6.8
-    ; Nueva librería para BH1750
-    claws/BH1750@^1.3.0
+    ; Nueva librería para BMP280
+    claws/BMP280@^1.3.0
 ```
 
 ### Paso 8: Actualiza la Documentación TTN
 
-**Archivo**: `docs/usage.md` (sección decodificador)
+**Archivo**: `docs/6_uso.md` (sección decodificador)
 
 ```javascript
 // Agrega campo de luz al decodificador TTN
@@ -403,7 +403,7 @@ function decodeUplink(input) {
     offset += 2;
   }
 
-  // BH1750 - Luminosidad
+  // BMP280 - Luminosidad
   if (payloadSize >= 17 && offset + 2 <= payloadSize) {
     data.light = ((bytes[offset] << 8) | bytes[offset + 1]);
     offset += 2;
@@ -428,15 +428,15 @@ function decodeUplink(input) {
 
 ```cpp
 // En config/config.h
-#define ENABLE_SENSOR_BH1750    // Solo BH1750 para pruebas
+#define ENABLE_SENSOR_BMP280    // Solo BMP280 para pruebas
 // Comenta otros sensores
 
 // Compila y sube
 pio run --target upload
 
 // Verifica en Serial Monitor
-// Deberías ver: "BH1750 inicializado correctamente"
-// Y lecturas como: "BH1750: 450.5 lux"
+// Deberías ver: "BMP280 inicializado correctamente"
+// Y lecturas como: "BMP280: 450.5 lux"
 ```
 
 ---
@@ -450,8 +450,8 @@ pio run --target upload
 #define DEBUG_MODE 1
 
 // En funciones
-Serial.printf("BH1750: Inicializando...\n");
-Serial.printf("BH1750: Lectura = %.1f lux\n", lux);
+Serial.printf("BMP280: Inicializando...\n");
+Serial.printf("BMP280: Lectura = %.1f lux\n", lux);
 ```
 
 ### 🔍 Verificar I2C
@@ -472,12 +472,12 @@ void scanI2C() {
 ### 🧪 Tests Unitarios
 
 ```cpp
-// Función de test para BH1750
-void testBH1750() {
-    Serial.println("=== TEST BH1750 ===");
+// Función de test para BMP280
+void testBMP280() {
+    Serial.println("=== TEST BMP280 ===");
 
     // Test inicialización
-    if (sensor_bh1750_init()) {
+    if (sensor_BMP280_init()) {
         Serial.println("✅ Inicialización OK");
     } else {
         Serial.println("❌ Inicialización FALLÓ");
@@ -486,7 +486,7 @@ void testBH1750() {
 
     // Test lectura
     sensor_data_t test_data = {0};
-    if (sensor_bh1750_read(&test_data)) {
+    if (sensor_BMP280_read(&test_data)) {
         Serial.printf("✅ Lectura OK: %.1f lux\n", test_data.light);
     } else {
         Serial.println("❌ Lectura FALLÓ");
@@ -502,7 +502,7 @@ void testBH1750() {
 
 ```cpp
 // ✅ Bien: Nombres descriptivos
-bool sensor_bh1750_init(void)
+bool sensor_BMP280_init(void)
 float readLightLevel(void)
 
 // ❌ Mal: Nombres confusos
@@ -510,21 +510,21 @@ bool init(void)
 float get(void)
 
 // ✅ Bien: Comentarios claros
-// Inicializa sensor BH1750 en modo alta resolución
-bool sensor_bh1750_init(void) {
+// Inicializa sensor BMP280 en modo alta resolución
+bool sensor_BMP280_init(void) {
     // Código comentado
 }
 
 // ✅ Bien: Constantes con nombre descriptivo
-#define BH1750_I2C_ADDR 0x23
-#define BH1750_MODE BH1750::CONTINUOUS_HIGH_RES_MODE
+#define BMP280_I2C_ADDR 0x23
+#define BMP280_MODE BMP280::CONTINUOUS_HIGH_RES_MODE
 ```
 
 ### 🛡️ Manejo de Errores
 
 ```cpp
 // ✅ Bien: Validación exhaustiva
-bool sensor_bh1750_read(sensor_data_t* data) {
+bool sensor_BMP280_read(sensor_data_t* data) {
     if (!sensor_available || !data) {
         Serial.println("Error: Sensor no disponible o puntero nulo");
         return false;
@@ -546,14 +546,14 @@ bool sensor_bh1750_read(sensor_data_t* data) {
 
 ```cpp
 // ✅ Bien: Variables locales cuando sea posible
-bool sensor_bh1750_read(sensor_data_t* data) {
+bool sensor_BMP280_read(sensor_data_t* data) {
     // No uses variables globales innecesarias
     float lux = lightMeter.readLightLevel(); // Local
     // ...
 }
 
 // ✅ Bien: Liberar recursos no usados
-#ifdef ENABLE_SENSOR_BH1750
+#ifdef ENABLE_SENSOR_BMP280
 // Código solo incluido si el sensor está habilitado
 #endif
 ```
@@ -565,12 +565,12 @@ bool sensor_bh1750_read(sensor_data_t* data) {
 ### 📋 Proceso de Contribución
 
 1. **Fork** el repositorio
-2. **Crea una rama** para tu feature: `git checkout -b feature/sensor-bh1750`
+2. **Crea una rama** para tu feature: `git checkout -b feature/sensor-BMP280`
 3. **Implementa** tu sensor siguiendo esta guía
 4. **Testea** exhaustivamente
 5. **Documenta** los cambios
-6. **Commit**: `git commit -m "Add BH1750 light sensor support"`
-7. **Push**: `git push origin feature/sensor-bh1750`
+6. **Commit**: `git commit -m "Add BMP280 light sensor support"`
+7. **Push**: `git push origin feature/sensor-BMP280`
 8. **Pull Request** con descripción detallada
 
 ### 📖 Documentación Requerida
@@ -578,8 +578,8 @@ bool sensor_bh1750_read(sensor_data_t* data) {
 Cuando agregues un nuevo sensor, actualiza:
 
 - [ ] `README.md`: Menciona el nuevo sensor
-- [ ] `docs/usage.md`: Configuración y ejemplos
-- [ ] `docs/architecture.md`: Diagrama actualizado
+- [ ] `docs/6_uso.md`: Configuración y ejemplos
+- [ ] `docs/4_arquitectura.md`: Diagrama actualizado
 - [ ] `platformio.ini`: Dependencias nuevas
 - [ ] TTN decoder: Campos nuevos
 

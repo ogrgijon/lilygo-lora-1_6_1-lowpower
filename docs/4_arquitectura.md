@@ -15,7 +15,7 @@ El sistema implementa una arquitectura modular altamente desacoplada, diseñada 
 ```mermaid
 graph TB
     subgraph "🏠 Sistema Principal"
-        MAIN[main_otta.ino<br/>Punto de entrada]
+        MAIN[main.ino<br/>Punto de entrada]
         LOOP[Bucle principal<br/>Gestión de eventos]
     end
 
@@ -78,7 +78,7 @@ graph TB
 
 ## 📦 Componentes del Sistema
 
-### 🎯 **Módulo Principal (`main_otta.ino`)**
+### 🎯 **Módulo Principal (`main.ino`)**
 **Responsabilidades:**
 - Punto de entrada del programa Arduino
 - Inicialización de todos los subsistemas

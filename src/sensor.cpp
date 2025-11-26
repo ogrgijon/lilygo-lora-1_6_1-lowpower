@@ -268,8 +268,8 @@ uint8_t sensors_get_payload(payload_config_t* config) {
         config->buffer[offset++] = batt_int >> 8;
         config->buffer[offset++] = batt_int & 0xFF;
 
-    // Estado solar (siempre incluido)
-    config->buffer[offset++] = isSolarChargingBattery() ? 1 : 0;
+    // Estado solar (comentado - no incluido)
+    // config->buffer[offset++] = isSolarChargingBattery() ? 1 : 0;
 
     config->written = offset;
     return offset;

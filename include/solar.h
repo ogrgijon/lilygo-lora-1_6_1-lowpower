@@ -23,13 +23,13 @@
  * @brief Verifica si la placa solar está cargando la batería
  * @return true si hay entrada VBUS y la batería está cargándose
  */
-bool isSolarChargingBattery();
+// bool isSolarChargingBattery();
 
 /**
  * @brief Obtiene el estado de carga de la placa solar
  * @return true si está cargando, false en caso contrario
  */
-bool getSolarChargeStatus();
+// bool getSolarChargeStatus();
 
 /**
  * @brief Función de monitoreo para depuración y logging

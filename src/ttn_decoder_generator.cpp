@@ -80,16 +80,13 @@ static void print_distance_decoder() {
 }
 
 /**
- * @brief Imprime el código para decodificar batería y estado solar
+ * @brief Imprime el código para decodificar batería
  */
-static void print_battery_solar_decoder() {
+static void print_battery_decoder() {
     Serial.println(F(""));
     Serial.println(F("  // Batería (V * 100) - siempre presente"));
     Serial.println(F("  var batteryIndex = bytes.length - 2;"));
     Serial.println(F("  data.battery_voltage = ((bytes[batteryIndex] << 8) | bytes[batteryIndex + 1]) / 100.0;"));
-    Serial.println(F(""));
-    Serial.println(F("  // Estado solar (0=no carga, 1=carga activa) - siempre presente"));
-    Serial.println(F("  data.solar_charging = bytes[bytes.length - 1] === 1;"));
     Serial.println(F(""));
 }
 
@@ -161,7 +158,6 @@ static void print_configuration_info() {
     if (SYSTEM_HAS_PRESSURE) Serial.println(F("  ✓ Presión atmosférica"));
     if (SYSTEM_HAS_DISTANCE) Serial.println(F("  ✓ Distancia"));
     Serial.println(F("  ✓ Batería"));
-    Serial.println(F("  ✓ Estado solar"));
 
     Serial.println(F(""));
 }
@@ -198,7 +194,7 @@ void generate_and_print_ttn_decoder() {
         print_distance_decoder();
     }
 
-    print_battery_solar_decoder();
+    print_battery_decoder();
     print_decoder_footer();
 }
 
@@ -242,13 +238,11 @@ uint16_t generate_ttn_decoder_string(char* buffer, uint16_t max_size) {
             "  data.distance = ((bytes[offset++] << 8) | bytes[offset++]) / 100.0;\n");
     }
 
-    // Batería y solar
+    // Batería
     offset += snprintf(buffer + offset, max_size - offset,
         "\n"
         "  var batteryIndex = bytes.length - 2;\n"
         "  data.battery_voltage = ((bytes[batteryIndex] << 8) | bytes[batteryIndex + 1]) / 100.0;\n"
-        "\n"
-        "  data.solar_charging = bytes[bytes.length - 1] === 1;\n"
         "\n"
         "  return { data: data };\n"
         "}\n");

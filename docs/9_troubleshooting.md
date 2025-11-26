@@ -117,7 +117,7 @@ Batería se agota rápidamente durante joins fallidos
 #### **Diagnóstico Paso a Paso**
 1. **Verificar implementación del backoff**
    ```cpp
-   // Verificar en main_otta.ino o pgm_board.cpp
+   // Verificar en main.ino o pgm_board.cpp
    // Función de cálculo de tiempo de backoff
    uint32_t calculateBackoffTime(uint8_t attempt) {
        uint32_t baseTime = BACKOFF_BASE_TIME; // 10 segundos
@@ -261,7 +261,7 @@ Distancia: -1.0 cm
 
 3. **Configuración de pines**
    ```cpp
-   // Verificar configuración en sensor_config.h
+   // Verificar configuración en config.h
    #define DHT_PIN 13                    // Pin de datos DHT
    #define DHT_TYPE DHT22                // Tipo de sensor DHT
    #define DHT_POWER_PIN 12              // Pin de alimentación DHT
@@ -824,7 +824,7 @@ rst:0x8 (TG1WDT_SYS_RST),boot:0x8 (SPI_FAST_FLASH_BOOT)
 
 2. **Verificar configuración del WDT**
    ```cpp
-   // Verificar en main_otta.ino
+   // Verificar en main.ino
    esp_task_wdt_init(300, true);  // Debe ser 300 segundos
    esp_task_wdt_add(NULL);        // Debe estar presente
    ```
